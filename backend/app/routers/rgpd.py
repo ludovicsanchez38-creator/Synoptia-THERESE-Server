@@ -8,11 +8,12 @@ Endpoints pour la conformité RGPD :
 - Statistiques RGPD
 """
 
+import json
 import logging
 from datetime import UTC, datetime, timedelta
 
 from app.models.database import get_session
-from app.models.entities import Activity, Contact, Deliverable, Project, Task
+from app.models.entities import Activity, Contact, Conversation, Deliverable, Message, Project, Task
 from app.models.schemas import (
     RGPDAnonymizeRequest,
     RGPDAnonymizeResponse,
@@ -21,7 +22,8 @@ from app.models.schemas import (
     RGPDStatsResponse,
     RGPDUpdateRequest,
 )
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -476,4 +478,335 @@ async def infer_rgpd_base_legale(
         "success": True,
         "base_legale": base_legale,
         "date_expiration": expiration.isoformat(),
+    }
+
+
+# ============================================================
+# RGPD Utilisateur - Droit de portabilite et droit a l effacement
+# Endpoints proteges par authentification JWT
+# ============================================================
+
+
+from app.auth.rbac import CurrentUser
+from app.auth.backend import log_audit
+from app.models.entities import (
+    BoardDecisionDB,
+    FileMetadata,
+    Preference,
+    PromptTemplate,
+    Invoice,
+    InvoiceLine,
+)
+
+
+
+
+class UserDataExport(BaseModel):
+    """Schema pour l export des donnees utilisateur."""
+    user: dict
+    conversations: list[dict]
+    messages_count: int
+    contacts: list[dict]
+    projects: list[dict]
+    tasks: list[dict]
+    files: list[dict]
+    preferences: list[dict]
+    exported_at: datetime
+
+
+@router.get("/user/export", response_model=UserDataExport)
+async def export_user_data(
+    current_user: CurrentUser,
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Exporte toutes les donnees de l utilisateur connecte (Art. 20 RGPD).
+
+    Retourne un JSON contenant conversations, contacts, projets,
+    taches, fichiers et preferences.
+    """
+    user_id = current_user.id
+
+    # Donnees utilisateur
+    user_data = {
+        "id": current_user.id,
+        "email": current_user.email,
+        "name": current_user.name,
+        "role": current_user.role,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+    }
+
+    # Conversations
+    result = await session.execute(
+        select(Conversation).where(Conversation.user_id == user_id)
+    )
+    conversations = result.scalars().all()
+    conversations_data = []
+    total_messages = 0
+    for conv in conversations:
+        result = await session.execute(
+            select(Message).where(Message.conversation_id == conv.id)
+        )
+        msgs = result.scalars().all()
+        total_messages += len(msgs)
+        conversations_data.append({
+            "id": conv.id,
+            "title": conv.title,
+            "created_at": conv.created_at.isoformat() if conv.created_at else None,
+            "messages": [
+                {
+                    "role": m.role,
+                    "content": m.content,
+                    "model": m.model,
+                    "created_at": m.created_at.isoformat() if m.created_at else None,
+                }
+                for m in msgs
+            ],
+        })
+
+    # Contacts
+    result = await session.execute(
+        select(Contact).where(Contact.user_id == user_id)
+    )
+    contacts = result.scalars().all()
+    contacts_data = [
+        {
+            "id": c.id,
+            "first_name": c.first_name,
+            "last_name": c.last_name,
+            "company": c.company,
+            "email": c.email,
+            "phone": c.phone,
+            "stage": c.stage,
+            "created_at": c.created_at.isoformat() if c.created_at else None,
+        }
+        for c in contacts
+    ]
+
+    # Projets
+    result = await session.execute(
+        select(Project).where(Project.user_id == user_id)
+    )
+    projects = result.scalars().all()
+    projects_data = [
+        {
+            "id": p.id,
+            "name": p.name,
+            "description": p.description,
+            "status": p.status,
+            "created_at": p.created_at.isoformat() if p.created_at else None,
+        }
+        for p in projects
+    ]
+
+    # Taches
+    result = await session.execute(
+        select(Task).where(Task.user_id == user_id)
+    )
+    tasks = result.scalars().all()
+    tasks_data = [
+        {
+            "id": t.id,
+            "title": t.title,
+            "status": t.status,
+            "priority": t.priority,
+            "due_date": t.due_date.isoformat() if t.due_date else None,
+        }
+        for t in tasks
+    ]
+
+    # Fichiers
+    result = await session.execute(
+        select(FileMetadata).where(FileMetadata.user_id == user_id)
+    )
+    files = result.scalars().all()
+    files_data = [
+        {
+            "id": f.id,
+            "name": f.name,
+            "path": f.path,
+            "size": f.size,
+            "created_at": f.created_at.isoformat() if f.created_at else None,
+        }
+        for f in files
+    ]
+
+    # Preferences
+    result = await session.execute(
+        select(Preference).where(Preference.user_id == user_id)
+    )
+    prefs = result.scalars().all()
+    prefs_data = [
+        {"key": p.key, "value": p.value, "category": p.category}
+        for p in prefs
+    ]
+
+    logger.info("RGPD user export for user %s", current_user.email)
+
+    return UserDataExport(
+        user=user_data,
+        conversations=conversations_data,
+        messages_count=total_messages,
+        contacts=contacts_data,
+        projects=projects_data,
+        tasks=tasks_data,
+        files=files_data,
+        preferences=prefs_data,
+        exported_at=datetime.now(UTC),
+    )
+
+
+@router.delete("/user/data")
+async def delete_user_data(
+    current_user: CurrentUser,
+    request_obj: Request = None,
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Supprime toutes les donnees de l utilisateur connecte (Art. 17 RGPD).
+
+    Efface : conversations, messages, contacts, projets, taches,
+    fichiers, preferences, decisions, templates, factures.
+    Ne supprime PAS le compte utilisateur lui-meme.
+    """
+    user_id = current_user.id
+    deleted = {}
+
+    # Messages (via conversations)
+    result = await session.execute(
+        select(Conversation).where(Conversation.user_id == user_id)
+    )
+    conversations = result.scalars().all()
+    msg_count = 0
+    for conv in conversations:
+        result = await session.execute(
+            select(Message).where(Message.conversation_id == conv.id)
+        )
+        msgs = result.scalars().all()
+        msg_count += len(msgs)
+        for m in msgs:
+            await session.delete(m)
+    deleted["messages"] = msg_count
+
+    # Conversations
+    for conv in conversations:
+        await session.delete(conv)
+    deleted["conversations"] = len(conversations)
+
+    # Activites (via contacts)
+    result = await session.execute(
+        select(Contact).where(Contact.user_id == user_id)
+    )
+    contacts = result.scalars().all()
+    for contact in contacts:
+        result = await session.execute(
+            select(Activity).where(Activity.contact_id == contact.id)
+        )
+        activities = result.scalars().all()
+        for a in activities:
+            await session.delete(a)
+
+    # Factures et lignes (via contacts)
+    for contact in contacts:
+        result = await session.execute(
+            select(Invoice).where(Invoice.contact_id == contact.id)
+        )
+        invoices = result.scalars().all()
+        for inv in invoices:
+            result = await session.execute(
+                select(InvoiceLine).where(InvoiceLine.invoice_id == inv.id)
+            )
+            lines = result.scalars().all()
+            for line in lines:
+                await session.delete(line)
+            await session.delete(inv)
+
+    # Contacts
+    for c in contacts:
+        await session.delete(c)
+    deleted["contacts"] = len(contacts)
+
+    # Projets, taches, livrables
+    result = await session.execute(
+        select(Project).where(Project.user_id == user_id)
+    )
+    projects = result.scalars().all()
+    for p in projects:
+        result = await session.execute(
+            select(Task).where(Task.project_id == p.id)
+        )
+        for t in result.scalars().all():
+            await session.delete(t)
+        result = await session.execute(
+            select(Deliverable).where(Deliverable.project_id == p.id)
+        )
+        for d in result.scalars().all():
+            await session.delete(d)
+        await session.delete(p)
+    deleted["projects"] = len(projects)
+
+    # Taches orphelines
+    result = await session.execute(
+        select(Task).where(Task.user_id == user_id)
+    )
+    tasks = result.scalars().all()
+    for t in tasks:
+        await session.delete(t)
+    deleted["tasks"] = len(tasks)
+
+    # Fichiers
+    result = await session.execute(
+        select(FileMetadata).where(FileMetadata.user_id == user_id)
+    )
+    files = result.scalars().all()
+    for f in files:
+        await session.delete(f)
+    deleted["files"] = len(files)
+
+    # Preferences
+    result = await session.execute(
+        select(Preference).where(Preference.user_id == user_id)
+    )
+    prefs = result.scalars().all()
+    for p in prefs:
+        await session.delete(p)
+    deleted["preferences"] = len(prefs)
+
+    # Decisions Board
+    result = await session.execute(
+        select(BoardDecisionDB).where(BoardDecisionDB.user_id == user_id)
+    )
+    decisions = result.scalars().all()
+    for d in decisions:
+        await session.delete(d)
+    deleted["board_decisions"] = len(decisions)
+
+    # Templates
+    result = await session.execute(
+        select(PromptTemplate).where(PromptTemplate.user_id == user_id)
+    )
+    templates = result.scalars().all()
+    for t in templates:
+        await session.delete(t)
+    deleted["prompt_templates"] = len(templates)
+
+    await session.commit()
+
+    # Audit (dans une nouvelle transaction, car les donnees sont deja supprimees)
+    await log_audit(
+        session=session,
+        user_id=current_user.id,
+        org_id=current_user.org_id,
+        action="rgpd_delete_all_data",
+        resource="user_data",
+        details_json=json.dumps(deleted),
+        user_email=current_user.email,
+    )
+
+    logger.info("RGPD data deletion for user %s: %s", current_user.email, deleted)
+
+    return {
+        "success": True,
+        "message": "Toutes vos donnees ont ete supprimees",
+        "deleted": deleted,
     }

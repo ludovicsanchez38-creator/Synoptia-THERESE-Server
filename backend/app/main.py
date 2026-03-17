@@ -178,6 +178,12 @@ def create_app() -> FastAPI:
 
     from app.routers.config import router as config_router
     app.include_router(config_router, prefix="/api/config", tags=["config"])
+
+    from app.routers.admin import router as admin_router
+    app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+
+    from app.routers.rgpd import router as rgpd_router
+    app.include_router(rgpd_router, prefix="/api/rgpd", tags=["rgpd"])
     # Les routers seront activés au fur et à mesure de P0-4
     # from app.routers import chat_router, config_router, memory_router, ...
 
