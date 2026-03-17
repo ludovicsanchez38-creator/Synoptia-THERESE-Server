@@ -94,6 +94,7 @@ async def init_db() -> None:
 
     # Import models to register them
     from app.models import entities  # noqa: F401
+    from app.auth import models as auth_models  # noqa: F401
 
     # Create tables
     SQLModel.metadata.create_all(sync_engine)

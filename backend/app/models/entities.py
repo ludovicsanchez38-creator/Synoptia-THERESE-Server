@@ -22,6 +22,10 @@ class Contact(SQLModel, table=True):
     __tablename__ = "contacts"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
+
+    # Multi-tenant
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
+    org_id: str | None = Field(default=None, index=True)
     first_name: str | None = None
     last_name: str | None = None
     company: str | None = None
@@ -71,6 +75,10 @@ class Project(SQLModel, table=True):
     __tablename__ = "projects"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
+
+    # Multi-tenant
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
+    org_id: str | None = Field(default=None, index=True)
     name: str
     description: str | None = None
     contact_id: str | None = Field(default=None, foreign_key="contacts.id", index=True)
@@ -97,6 +105,10 @@ class Conversation(SQLModel, table=True):
     __tablename__ = "conversations"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
+
+    # Multi-tenant
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
+    org_id: str | None = Field(default=None, index=True)
     title: str | None = None
     summary: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
@@ -134,6 +146,10 @@ class FileMetadata(SQLModel, table=True):
     __tablename__ = "files"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
+
+    # Multi-tenant
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
+    org_id: str | None = Field(default=None, index=True)
     path: str = Field(unique=True)
     name: str
     extension: str
@@ -155,7 +171,11 @@ class Preference(SQLModel, table=True):
     __tablename__ = "preferences"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
-    key: str = Field(unique=True)
+
+    # Multi-tenant
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
+    org_id: str | None = Field(default=None, index=True)
+    key: str = Field(index=True)  # Plus unique globalement (multi-user)
     value: str  # JSON-encoded value
     category: str = Field(default="general")  # general, ui, llm, memory
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -168,6 +188,10 @@ class BoardDecisionDB(SQLModel, table=True):
     __tablename__ = "board_decisions"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
+
+    # Multi-tenant
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
+    org_id: str | None = Field(default=None, index=True)
     question: str
     context: str | None = None
     opinions: str  # JSON array of AdvisorOpinion objects
@@ -184,6 +208,10 @@ class PromptTemplate(SQLModel, table=True):
     __tablename__ = "prompt_templates"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
+
+    # Multi-tenant
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
+    org_id: str | None = Field(default=None, index=True)
     name: str
     prompt: str
     category: str = Field(default="general")
@@ -207,6 +235,10 @@ class EmailAccount(SQLModel, table=True):
     __tablename__ = "email_accounts"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
+
+    # Multi-tenant
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
+    org_id: str | None = Field(default=None, index=True)
     email: str = Field(unique=True, index=True)
     provider: str = "gmail"  # gmail, imap
 
@@ -335,6 +367,10 @@ class Calendar(SQLModel, table=True):
     __tablename__ = "calendars"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
+
+    # Multi-tenant
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
+    org_id: str | None = Field(default=None, index=True)
     account_id: str | None = Field(default=None, foreign_key="email_accounts.id", index=True)
     summary: str  # Nom du calendrier
     description: str | None = None
@@ -397,6 +433,10 @@ class Task(SQLModel, table=True):
     __tablename__ = "tasks"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
+
+    # Multi-tenant
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
+    org_id: str | None = Field(default=None, index=True)
     title: str
     description: str | None = None
     status: str = "todo"  # todo, in_progress, done, cancelled
@@ -423,6 +463,10 @@ class Invoice(SQLModel, table=True):
     __tablename__ = "invoices"
 
     id: str = Field(default_factory=generate_uuid, primary_key=True)
+
+    # Multi-tenant
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
+    org_id: str | None = Field(default=None, index=True)
     invoice_number: str = Field(unique=True, index=True)  # FACT-2026-001, DEV-2026-001, AV-2026-001
     contact_id: str = Field(foreign_key="contacts.id", index=True)
     document_type: str = Field(default="facture", index=True)  # devis, facture, avoir
