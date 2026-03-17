@@ -36,6 +36,9 @@ async def lifespan(app: FastAPI):
     """Application startup and shutdown."""
     logger.info("Thérèse Server %s démarrage...", settings.app_version)
 
+    # Importer les modèles auth pour les enregistrer
+    from app.auth import models as auth_models  # noqa: F401
+
     # Initialiser la base de données
     await init_db()
     logger.info("Base de données initialisée")
@@ -73,8 +76,8 @@ def create_app() -> FastAPI:
         version=settings.app_version,
         description="Assistant IA multi-utilisateurs pour collectivités et PME",
         lifespan=lifespan,
-        docs_url="/docs" if settings.debug else None,
-        redoc_url="/redoc" if settings.debug else None,
+        docs_url="/docs",
+        redoc_url="/redoc",
     )
 
     # CORS - configurable par environnement
@@ -162,7 +165,13 @@ def create_app() -> FastAPI:
 
         return {"status": "ok", "services": services}
 
-    # Register routers (progressivement, au fur et à mesure de l'adaptation)
+    # Register routers
+    from app.auth.router import router as auth_router
+    app.include_router(auth_router)
+
+    # Les autres routers seront activés au fur et à mesure de P0-4
+    # from app.routers import chat_router, config_router, memory_router, ...
+    # app.include_router(chat_router, prefix="/api")
     # Les routers seront activés au fur et à mesure de P0-4
     # from app.routers import chat_router, config_router, memory_router, ...
     # app.include_router(chat_router, prefix="/api")
