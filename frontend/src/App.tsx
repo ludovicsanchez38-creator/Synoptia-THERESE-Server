@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./stores/authStore";
 import LoginPage from "./pages/Login";
 import ChatPage from "./pages/Chat";
 import AdminDashboard from "./pages/admin/Dashboard";
+import Spinner from "./components/ui/Spinner";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
@@ -18,6 +20,25 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const { isLoading, checkAuth } = useAuthStore();
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Spinner size="lg" />
+          <p className="mt-4 text-sm text-[var(--color-muted)]">
+            Chargement...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />

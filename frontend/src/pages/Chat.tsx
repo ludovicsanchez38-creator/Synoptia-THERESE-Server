@@ -1,24 +1,60 @@
 import { useState } from "react";
 import { useAuthStore } from "../stores/authStore";
+import { useChatStore } from "../stores/chatStore";
+import ConversationList from "../components/chat/ConversationList";
+import MessageList from "../components/chat/MessageList";
+import ChatInput from "../components/chat/ChatInput";
 
 export default function ChatPage() {
   const { user, logout } = useAuthStore();
-  const [message, setMessage] = useState("");
+  const { error, clearError } = useChatStore();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-slate-800">
+      <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-[var(--color-cyan)]">Thérèse</h1>
-          <span className="text-xs text-[var(--color-muted)] bg-slate-800 px-2 py-0.5 rounded">
-            {user?.org_name}
-          </span>
+          {/* Bouton menu mobile */}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="md:hidden text-[var(--color-muted)] hover:text-[var(--color-text)]"
+            aria-label="Menu"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 12h18" />
+              <path d="M3 6h18" />
+              <path d="M3 18h18" />
+            </svg>
+          </button>
+          <h1 className="text-lg font-bold text-[var(--color-cyan)]">
+            Th{"\u00e9"}r{"\u00e8"}se
+          </h1>
+          {user?.org_name && (
+            <span className="text-xs text-[var(--color-muted)] bg-slate-800 px-2 py-0.5 rounded hidden sm:inline">
+              {user.org_name}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-[var(--color-muted)]">{user?.name}</span>
+          <span className="text-sm text-[var(--color-muted)] hidden sm:inline">
+            {user?.name}
+          </span>
           {user?.role === "admin" && (
-            <a href="/admin" className="text-xs text-[var(--color-primary)] hover:underline">
+            <a
+              href="/admin"
+              className="text-xs text-[var(--color-primary)] hover:underline"
+            >
               Admin
             </a>
           )}
@@ -26,53 +62,50 @@ export default function ChatPage() {
             onClick={logout}
             className="text-xs text-[var(--color-muted)] hover:text-red-400 transition-colors"
           >
-            Déconnexion
+            D{"\u00e9"}connexion
           </button>
         </div>
       </header>
 
-      {/* Chat area */}
-      <div className="flex-1 flex">
-        {/* Sidebar - conversations */}
-        <aside className="w-64 border-r border-slate-800 p-4">
-          <button className="w-full py-2 text-sm bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-lg text-[var(--color-primary)] hover:bg-[var(--color-primary)]/20 transition-colors">
-            + Nouvelle conversation
+      {/* Bandeau d'erreur */}
+      {error && (
+        <div className="bg-red-500/10 border-b border-red-500/30 text-red-400 px-4 py-2 text-sm flex items-center justify-between shrink-0">
+          <span>{error}</span>
+          <button
+            onClick={clearError}
+            className="text-red-400 hover:text-red-300 ml-4"
+          >
+            Fermer
           </button>
-          <div className="mt-4 text-sm text-[var(--color-muted)]">
-            Aucune conversation
-          </div>
+        </div>
+      )}
+
+      {/* Corps principal */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Overlay mobile */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-10 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar conversations */}
+        <aside
+          className={`
+            w-72 border-r border-slate-800 bg-[var(--color-bg)] shrink-0
+            absolute md:relative z-20 h-full
+            transition-transform duration-200 ease-in-out
+            ${sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+          `}
+        >
+          <ConversationList />
         </aside>
 
-        {/* Main chat */}
-        <main className="flex-1 flex flex-col">
-          <div className="flex-1 flex items-center justify-center text-[var(--color-muted)]">
-            Commencez une conversation avec Thérèse
-          </div>
-
-          {/* Input */}
-          <div className="p-4 border-t border-slate-800">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                // TODO: send message
-                setMessage("");
-              }}
-              className="flex gap-2"
-            >
-              <input
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Écrivez votre message..."
-                className="flex-1 px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg focus:outline-none focus:border-[var(--color-primary)] text-[var(--color-text)]"
-              />
-              <button
-                type="submit"
-                className="px-6 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 rounded-lg font-medium transition-colors"
-              >
-                Envoyer
-              </button>
-            </form>
-          </div>
+        {/* Zone principale */}
+        <main className="flex-1 flex flex-col min-w-0">
+          <MessageList />
+          <ChatInput />
         </main>
       </div>
     </div>
