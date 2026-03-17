@@ -169,12 +169,17 @@ def create_app() -> FastAPI:
     from app.auth.router import router as auth_router
     app.include_router(auth_router)
 
-    # Les autres routers seront activés au fur et à mesure de P0-4
-    # from app.routers import chat_router, config_router, memory_router, ...
-    # app.include_router(chat_router, prefix="/api")
+    # Routers adaptés multi-user (P0-4)
+    from app.routers.chat import router as chat_router
+    app.include_router(chat_router, prefix="/api/chat", tags=["chat"])
+
+    from app.routers.memory import router as memory_router
+    app.include_router(memory_router, prefix="/api/memory", tags=["memory"])
+
+    from app.routers.config import router as config_router
+    app.include_router(config_router, prefix="/api/config", tags=["config"])
     # Les routers seront activés au fur et à mesure de P0-4
     # from app.routers import chat_router, config_router, memory_router, ...
-    # app.include_router(chat_router, prefix="/api")
 
     return app
 
