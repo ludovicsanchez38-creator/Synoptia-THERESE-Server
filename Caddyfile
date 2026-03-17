@@ -1,0 +1,33 @@
+# Thérèse Server - Reverse Proxy
+# Remplacer par votre domaine en production
+{
+    admin off
+}
+
+:80 {
+    # API backend
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    # Health checks
+    handle /health* {
+        reverse_proxy backend:8000
+    }
+
+    # OpenAPI docs (dev only)
+    handle /docs* {
+        reverse_proxy backend:8000
+    }
+    handle /redoc* {
+        reverse_proxy backend:8000
+    }
+    handle /openapi.json {
+        reverse_proxy backend:8000
+    }
+
+    # Frontend (tout le reste)
+    handle {
+        reverse_proxy frontend:3000
+    }
+}

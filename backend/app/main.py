@@ -1,0 +1,180 @@
+"""
+Thérèse Server - FastAPI Application
+
+Assistant IA multi-utilisateurs pour collectivités et PME.
+"""
+
+import logging
+import os
+from contextlib import asynccontextmanager
+
+from app.config import settings
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+# Rate limiting (SEC-015)
+try:
+    from slowapi import Limiter
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.middleware import SlowAPIMiddleware
+    from slowapi.util import get_remote_address
+
+    HAS_SLOWAPI = True
+except ImportError:
+    HAS_SLOWAPI = False
+
+from app.models.database import close_db, init_db
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application startup and shutdown."""
+    logger.info("Thérèse Server %s démarrage...", settings.app_version)
+
+    # Initialiser la base de données
+    await init_db()
+    logger.info("Base de données initialisée")
+
+    # Initialiser Qdrant si configuré
+    skip_services = os.environ.get("THERESE_SKIP_SERVICES") == "1"
+    if not skip_services:
+        try:
+            from app.services import init_qdrant
+
+            await init_qdrant()
+            logger.info("Qdrant initialisé")
+        except Exception as e:
+            logger.warning("Qdrant non disponible (mode dégradé) : %s", e)
+
+    yield
+
+    # Shutdown
+    await close_db()
+    if not skip_services:
+        try:
+            from app.services import close_qdrant
+
+            await close_qdrant()
+        except Exception:
+            pass
+
+    logger.info("Thérèse Server arrêté")
+
+
+def create_app() -> FastAPI:
+    """Create and configure the FastAPI application."""
+    app = FastAPI(
+        title=settings.app_name,
+        version=settings.app_version,
+        description="Assistant IA multi-utilisateurs pour collectivités et PME",
+        lifespan=lifespan,
+        docs_url="/docs" if settings.debug else None,
+        redoc_url="/redoc" if settings.debug else None,
+    )
+
+    # CORS - configurable par environnement
+    origins = ["http://localhost:3000", "http://localhost:5173"]
+    if settings.domain != "localhost":
+        origins.append(f"https://{settings.domain}")
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Rate limiting
+    if HAS_SLOWAPI:
+        limiter = Limiter(key_func=get_remote_address)
+        app.state.limiter = limiter
+        app.add_middleware(SlowAPIMiddleware)
+
+        @app.exception_handler(RateLimitExceeded)
+        async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Trop de requêtes. Réessayez dans quelques instants."},
+            )
+
+    # Security headers
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        if settings.environment == "production":
+            response.headers["Strict-Transport-Security"] = (
+                "max-age=31536000; includeSubDomains"
+            )
+        return response
+
+    # Error handlers
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request: Request, exc: RequestValidationError):
+        return JSONResponse(
+            status_code=422,
+            content={"detail": str(exc)},
+        )
+
+    # Health check
+    @app.get("/health")
+    async def health():
+        return {"status": "ok", "version": settings.app_version}
+
+    @app.get("/health/services")
+    async def health_services():
+        services = {"database": "ok", "qdrant": "unknown"}
+        try:
+            from app.models.database import get_session_context
+
+            async with get_session_context() as session:
+                from sqlmodel import text
+
+                await session.execute(text("SELECT 1"))
+        except Exception as e:
+            services["database"] = f"error: {e}"
+
+        try:
+            from app.services.qdrant import get_qdrant_client
+
+            client = get_qdrant_client()
+            if client:
+                collections = await client.get_collections()
+                services["qdrant"] = "ok"
+        except Exception as e:
+            services["qdrant"] = f"error: {e}"
+
+        return {"status": "ok", "services": services}
+
+    # Register routers (progressivement, au fur et à mesure de l'adaptation)
+    # Les routers seront activés au fur et à mesure de P0-4
+    # from app.routers import chat_router, config_router, memory_router, ...
+    # app.include_router(chat_router, prefix="/api")
+
+    return app
+
+
+# Create app instance
+app = create_app()
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG if settings.debug else logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
