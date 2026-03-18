@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from "react";
 import { useChatStore } from "../../stores/chatStore";
+import TemplateSelector from "./TemplateSelector";
 
 export default function ChatInput() {
   const [content, setContent] = useState("");
@@ -32,12 +33,23 @@ export default function ChatInput() {
     }
   };
 
+  const handleTemplateSelect = (prompt: string) => {
+    setContent(prompt);
+    // Focus le textarea apres insertion
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 50);
+  };
+
   return (
     <form
       onSubmit={handleSubmit}
       className="p-3 md:p-4 border-t border-slate-800 bg-[var(--color-bg)]"
     >
       <div className="flex items-end gap-2 max-w-4xl mx-auto">
+        {/* Bouton modeles de prompts */}
+        <TemplateSelector onSelect={handleTemplateSelect} />
+
         <textarea
           ref={textareaRef}
           value={content}
@@ -45,7 +57,7 @@ export default function ChatInput() {
           onKeyDown={handleKeyDown}
           placeholder={
             currentConversationId
-              ? "Ecrivez votre message... (Entr\u00e9e pour envoyer)"
+              ? "\u00c9crivez votre message... (Entr\u00e9e pour envoyer)"
               : "S\u00e9lectionnez une conversation"
           }
           disabled={!currentConversationId}

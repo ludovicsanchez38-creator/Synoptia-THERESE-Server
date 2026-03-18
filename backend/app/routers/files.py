@@ -1,381 +1,528 @@
 """
-THÉRÈSE v2 - Files Router
+Thérèse Server - Files Router (RAG)
 
-Endpoints for file management and indexing.
+Endpoints pour la gestion de fichiers et l'indexation RAG.
+Upload, listing, suppression, indexation et recherche sémantique.
 """
 
+import asyncio
+import hashlib
 import logging
-import shutil
+import mimetypes
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.models.database import get_session
-from app.models.entities import FileMetadata
-from app.models.schemas import FileIndexRequest, FileResponse
-from app.services.file_parser import chunk_text, extract_text, get_file_metadata
-from app.services.path_security import validate_indexable_file
-from app.services.qdrant import get_qdrant_service
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+from app.auth.rbac import CurrentUser
+from app.auth.tenant import get_owned, scope_query, set_owner
+from app.config import settings
+from app.models.database import get_session
+from app.models.entities import FileMetadata
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.get("/", response_model=list[FileResponse])
-async def list_files(
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
-    session: AsyncSession = Depends(get_session),
-):
-    """List all indexed files."""
-    result = await session.execute(
-        select(FileMetadata)
-        .order_by(FileMetadata.indexed_at.desc())
-        .offset(offset)
-        .limit(limit)
-    )
-    files = result.scalars().all()
-
-    return [
-        FileResponse(
-            id=f.id,
-            path=f.path,
-            name=f.name,
-            extension=f.extension,
-            size=f.size,
-            mime_type=f.mime_type,
-            chunk_count=f.chunk_count,
-            indexed_at=f.indexed_at,
-            created_at=f.created_at,
-        )
-        for f in files
-    ]
+# ============================================================
+# Schémas
+# ============================================================
 
 
-@router.post("/index", response_model=FileResponse)
-async def index_file(
-    request: FileIndexRequest,
-    session: AsyncSession = Depends(get_session),
-):
+class FileMetadataResponse(BaseModel):
+    """Réponse avec les métadonnées d'un fichier."""
+
+    id: str
+    name: str
+    extension: str
+    size: int
+    mime_type: str | None = None
+    content_hash: str | None = None
+    chunk_count: int = 0
+    scope: str = "personal"
+    scope_id: str | None = None
+    indexed_at: datetime | None = None
+    created_at: datetime
+
+
+class SearchRequest(BaseModel):
+    """Requête de recherche sémantique."""
+
+    query: str = Field(..., min_length=1, max_length=2000)
+    limit: int = Field(default=5, ge=1, le=50)
+
+
+class SearchResult(BaseModel):
+    """Résultat de recherche sémantique."""
+
+    text: str
+    score: float
+    file_id: str | None = None
+    file_name: str | None = None
+    chunk_index: int | None = None
+    total_chunks: int | None = None
+
+
+class SearchResponse(BaseModel):
+    """Réponse de recherche sémantique."""
+
+    query: str
+    results: list[SearchResult]
+    total: int
+
+
+# ============================================================
+# Extensions autorisées
+# ============================================================
+
+ALLOWED_EXTENSIONS = {
+    ".txt", ".md", ".markdown", ".rst", ".log",
+    ".csv", ".tsv",
+    ".pdf", ".docx", ".doc", ".xlsx",
+    ".py", ".js", ".ts", ".json", ".yaml", ".yml", ".toml", ".xml",
+    ".html", ".css",
+}
+
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 Mo
+
+
+# ============================================================
+# Helpers
+# ============================================================
+
+
+def _extract_text_simple(file_path: Path) -> str | None:
     """
-    Index a file for RAG.
+    Extraction de texte basique pour les fichiers supportés nativement.
 
-    Extracts content, chunks it, and stores embeddings in Qdrant.
+    Pour les formats complexes (PDF, DOCX, XLSX), tente d'utiliser
+    le file_parser existant. En cas d'échec, retourne un message
+    indicatif.
     """
-    # Validation securite du chemin + type de fichier (SEC-002/003)
-    try:
-        file_path = validate_indexable_file(request.path)
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    ext = file_path.suffix.lower()
 
-    if not file_path.is_file():
-        raise HTTPException(status_code=400, detail="Path is not a file")
-
-    # Get file info
-    metadata = get_file_metadata(file_path)
-
-    # Check if already indexed
-    result = await session.execute(
-        select(FileMetadata).where(FileMetadata.path == str(file_path))
-    )
-    existing = result.scalar_one_or_none()
-
-    if existing:
-        # Delete old embeddings
-        qdrant = get_qdrant_service()
-        await qdrant.async_delete_by_entity(existing.id)
-
-        # Update existing entry
-        existing.size = metadata["size"]
-        existing.mime_type = metadata["mime_type"]
-        existing.updated_at = datetime.now(UTC)
-        file_meta = existing
-    else:
-        # Create new entry
-        file_meta = FileMetadata(
-            path=str(file_path),
-            name=metadata["name"],
-            extension=metadata["extension"],
-            size=metadata["size"],
-            mime_type=metadata["mime_type"],
-        )
-        session.add(file_meta)
-        await session.flush()  # Get the ID
-
-    # Extract text content
-    text_content = extract_text(file_path)
-
-    if text_content:
-        # Chunk the content
-        chunks = list(chunk_text(text_content, chunk_size=1000, overlap=200))
-
-        # Store embeddings in Qdrant
-        qdrant = get_qdrant_service()
-        items = []
-
-        for i, chunk in enumerate(chunks):
-            items.append({
-                "text": chunk,
-                "memory_type": "file",
-                "entity_id": file_meta.id,
-                "metadata": {
-                    "name": file_meta.name,
-                    "path": str(file_path),
-                    "chunk_index": i,
-                    "total_chunks": len(chunks),
-                },
-            })
-
-        if items:
-            await qdrant.async_add_memories(items)
-            logger.info(f"Indexed {len(chunks)} chunks for file {file_meta.name}")
-
-        file_meta.chunk_count = len(chunks)
-    else:
-        file_meta.chunk_count = 0
-        logger.warning(f"No text extracted from {file_path}")
-
-    file_meta.indexed_at = datetime.now(UTC)
-
-    await session.commit()
-    await session.refresh(file_meta)
-
-    return FileResponse(
-        id=file_meta.id,
-        path=file_meta.path,
-        name=file_meta.name,
-        extension=file_meta.extension,
-        size=file_meta.size,
-        mime_type=file_meta.mime_type,
-        chunk_count=file_meta.chunk_count,
-        indexed_at=file_meta.indexed_at,
-        created_at=file_meta.created_at,
-    )
-
-
-@router.get("/{file_id}", response_model=FileResponse)
-async def get_file(
-    file_id: str,
-    session: AsyncSession = Depends(get_session),
-):
-    """Get file metadata."""
-    result = await session.execute(
-        select(FileMetadata).where(FileMetadata.id == file_id)
-    )
-    file_meta = result.scalar_one_or_none()
-
-    if not file_meta:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    return FileResponse(
-        id=file_meta.id,
-        path=file_meta.path,
-        name=file_meta.name,
-        extension=file_meta.extension,
-        size=file_meta.size,
-        mime_type=file_meta.mime_type,
-        chunk_count=file_meta.chunk_count,
-        indexed_at=file_meta.indexed_at,
-        created_at=file_meta.created_at,
-    )
-
-
-@router.delete("/{file_id}")
-async def delete_file(
-    file_id: str,
-    session: AsyncSession = Depends(get_session),
-):
-    """Remove a file from the index (does not delete the actual file)."""
-    result = await session.execute(
-        select(FileMetadata).where(FileMetadata.id == file_id)
-    )
-    file_meta = result.scalar_one_or_none()
-
-    if not file_meta:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Remove embeddings from Qdrant
-    try:
-        qdrant = get_qdrant_service()
-        deleted_count = await qdrant.async_delete_by_entity(file_id)
-        logger.info(f"Deleted {deleted_count} embeddings for file {file_id}")
-    except Exception as e:
-        logger.warning(f"Failed to delete embeddings: {e}")
-
-    await session.delete(file_meta)
-    await session.commit()
-
-    return {"deleted": True, "id": file_id}
-
-
-@router.get("/{file_id}/content")
-async def get_file_content(
-    file_id: str,
-    session: AsyncSession = Depends(get_session),
-):
-    """
-    Get the extracted content of an indexed file.
-
-    Returns the parsed text content (not the raw file).
-    """
-    result = await session.execute(
-        select(FileMetadata).where(FileMetadata.id == file_id)
-    )
-    file_meta = result.scalar_one_or_none()
-
-    if not file_meta:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    file_path = Path(file_meta.path)
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail="File no longer exists on disk")
-
-    # Utiliser extract_text() (déjà importé) pour supporter PDF, DOCX, XLSX, etc.
-    try:
-        content = extract_text(file_path)
-        # extract_text() retourne None pour les formats non supportés ou fichiers vides
-        if content is None:
-            content = ""
-    except ValueError as e:
-        # ex : fichier > 50 Mo → HTTP 413
-        raise HTTPException(status_code=413, detail=str(e))
-    except Exception as e:
-        logger.error(f"Error reading file {file_path}: {e}")
-        raise HTTPException(status_code=500, detail="Error reading file content")
-
-    return {
-        "id": file_id,
-        "path": file_meta.path,
-        "name": file_meta.name,
-        "content": content[:10000],  # Limit content size
-        "truncated": len(content) > 10000,
+    # Fichiers texte : lecture directe
+    text_exts = {
+        ".txt", ".md", ".markdown", ".rst", ".log", ".csv", ".tsv",
+        ".py", ".js", ".ts", ".json", ".yaml", ".yml", ".toml",
+        ".xml", ".html", ".css",
     }
+    if ext in text_exts:
+        for encoding in ("utf-8", "latin-1", "cp1252"):
+            try:
+                return file_path.read_text(encoding=encoding)
+            except UnicodeDecodeError:
+                continue
+        return None
+
+    # Formats complexes : tenter le file_parser existant
+    try:
+        from app.services.file_parser import extract_text
+        return extract_text(file_path)
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning("Erreur extraction texte %s : %s", file_path, e)
+
+    # Fallback
+    if ext == ".pdf":
+        return "[Extraction PDF non disponible - installez pypdf]"
+    if ext in {".docx", ".doc"}:
+        return "[Extraction DOCX non disponible - installez python-docx]"
+    if ext == ".xlsx":
+        return "[Extraction XLSX non disponible - installez openpyxl]"
+
+    return None
 
 
-# Extensions autorisées pour l'upload vers un projet
-ALLOWED_UPLOAD_EXTENSIONS = {".md", ".txt", ".csv", ".xlsx", ".pdf", ".docx"}
+def _build_response(fm: FileMetadata) -> FileMetadataResponse:
+    """Construit la réponse depuis un FileMetadata."""
+    return FileMetadataResponse(
+        id=fm.id,
+        name=fm.name,
+        extension=fm.extension,
+        size=fm.size,
+        mime_type=fm.mime_type,
+        content_hash=fm.content_hash,
+        chunk_count=fm.chunk_count,
+        scope=fm.scope,
+        scope_id=fm.scope_id,
+        indexed_at=fm.indexed_at,
+        created_at=fm.created_at,
+    )
 
 
-@router.post("/upload", response_model=FileResponse)
+# ============================================================
+# Endpoints
+# ============================================================
+
+
+@router.post("/upload", response_model=FileMetadataResponse)
 async def upload_file(
     file: UploadFile,
-    project_id: str = Form(...),
+    current_user: CurrentUser,
+    scope: str = Form(default="personal"),
+    scope_id: str | None = Form(default=None),
     session: AsyncSession = Depends(get_session),
 ):
     """
-    Upload un fichier et l'associe à un projet.
+    Upload un fichier.
 
-    Le fichier est sauvegardé dans ~/.therese/projects/{project_id}/files/
-    puis indexé dans Qdrant pour la recherche sémantique.
+    Le fichier est sauvegardé dans {data_dir}/uploads/{org_id}/{user_id}/
+    et ses métadonnées sont enregistrées en base.
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="Nom de fichier manquant")
 
     # Valider l'extension
     ext = Path(file.filename).suffix.lower()
-    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+    if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Extension {ext} non supportée. Extensions autorisées : {', '.join(sorted(ALLOWED_UPLOAD_EXTENSIONS))}",
+            detail=(
+                f"Extension {ext} non supportée. "
+                f"Extensions autorisées : {', '.join(sorted(ALLOWED_EXTENSIONS))}"
+            ),
         )
 
-    # Vérifier que le projet existe
-    from app.models.entities import Project
-    result = await session.execute(
-        select(Project).where(Project.id == project_id)
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    # Lire le contenu pour vérifier la taille
+    content = await file.read()
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail="Le fichier dépasse la limite de 50 Mo",
+        )
 
-    # Créer le dossier de stockage
-    therese_dir = Path.home() / ".therese" / "projects" / project_id / "files"
-    therese_dir.mkdir(parents=True, exist_ok=True)
+    # Répertoire de stockage : {data_dir}/uploads/{org_id}/{user_id}/
+    org_id = current_user.org_id or "default"
+    user_id = current_user.id
+    upload_dir = settings.data_dir / "uploads" / org_id / user_id
+    upload_dir.mkdir(parents=True, exist_ok=True)
 
     # Sauvegarder le fichier
-    dest_path = therese_dir / file.filename
-    try:
-        with dest_path.open("wb") as f:
-            shutil.copyfileobj(file.file, f)
-    except Exception as e:
-        logger.error(f"Erreur sauvegarde fichier : {e}")
-        raise HTTPException(status_code=500, detail="Erreur lors de la sauvegarde du fichier")
+    dest_path = upload_dir / file.filename
 
-    # Récupérer les métadonnées
-    metadata = get_file_metadata(dest_path)
+    # Si le fichier existe déjà, ajouter un suffixe
+    counter = 1
+    original_stem = dest_path.stem
+    while dest_path.exists():
+        dest_path = upload_dir / f"{original_stem}_{counter}{ext}"
+        counter += 1
 
-    # Créer ou mettre à jour l'entrée en base
-    result = await session.execute(
-        select(FileMetadata).where(FileMetadata.path == str(dest_path))
+    dest_path.write_bytes(content)
+
+    # Calculer le hash et le type MIME
+    content_hash = hashlib.sha256(content).hexdigest()
+    mime_type, _ = mimetypes.guess_type(str(dest_path))
+
+    # Créer l'entrée FileMetadata
+    file_meta = FileMetadata(
+        path=str(dest_path),
+        name=dest_path.name,
+        extension=ext,
+        size=len(content),
+        mime_type=mime_type,
+        content_hash=content_hash,
+        scope=scope,
+        scope_id=scope_id,
     )
-    existing = result.scalar_one_or_none()
-
-    if existing:
-        qdrant = get_qdrant_service()
-        await qdrant.async_delete_by_entity(existing.id)
-        existing.size = metadata["size"]
-        existing.mime_type = metadata["mime_type"]
-        existing.scope = "project"
-        existing.scope_id = project_id
-        existing.updated_at = datetime.now(UTC)
-        file_meta = existing
-    else:
-        file_meta = FileMetadata(
-            path=str(dest_path),
-            name=metadata["name"],
-            extension=metadata["extension"],
-            size=metadata["size"],
-            mime_type=metadata["mime_type"],
-            scope="project",
-            scope_id=project_id,
-        )
-        session.add(file_meta)
-        await session.flush()
-
-    # Extraire et indexer le contenu
-    text_content = extract_text(dest_path)
-    if text_content:
-        chunks = list(chunk_text(text_content, chunk_size=1000, overlap=200))
-        qdrant = get_qdrant_service()
-        items = []
-        for i, chunk in enumerate(chunks):
-            items.append({
-                "text": chunk,
-                "memory_type": "file",
-                "entity_id": file_meta.id,
-                "metadata": {
-                    "name": file_meta.name,
-                    "path": str(dest_path),
-                    "chunk_index": i,
-                    "total_chunks": len(chunks),
-                    "project_id": project_id,
-                },
-            })
-        if items:
-            await qdrant.async_add_memories(items)
-            logger.info(f"Indexé {len(chunks)} chunks pour {file_meta.name} (projet {project_id})")
-        file_meta.chunk_count = len(chunks)
-    else:
-        file_meta.chunk_count = 0
-
-    file_meta.indexed_at = datetime.now(UTC)
-    await session.commit()
+    set_owner(file_meta, current_user)
+    session.add(file_meta)
+    await session.flush()
     await session.refresh(file_meta)
 
-    return FileResponse(
-        id=file_meta.id,
-        path=file_meta.path,
-        name=file_meta.name,
-        extension=file_meta.extension,
-        size=file_meta.size,
-        mime_type=file_meta.mime_type,
-        chunk_count=file_meta.chunk_count,
-        indexed_at=file_meta.indexed_at,
-        created_at=file_meta.created_at,
+    logger.info(
+        "Fichier uploadé : %s (%d octets) par %s",
+        file_meta.name, file_meta.size, current_user.email,
+    )
+
+    return _build_response(file_meta)
+
+
+@router.get("", response_model=list[FileMetadataResponse])
+async def list_files(
+    current_user: CurrentUser,
+    scope: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Liste les fichiers de l'utilisateur.
+
+    Filtre optionnel par scope (personal, service, organization).
+    """
+    stmt = select(FileMetadata).order_by(FileMetadata.created_at.desc())
+    stmt = scope_query(stmt, FileMetadata, current_user)
+
+    if scope:
+        stmt = stmt.where(FileMetadata.scope == scope)
+
+    stmt = stmt.offset(offset).limit(limit)
+    result = await session.execute(stmt)
+    files = result.scalars().all()
+
+    return [_build_response(f) for f in files]
+
+
+@router.get("/{file_id}", response_model=FileMetadataResponse)
+async def get_file(
+    file_id: str,
+    current_user: CurrentUser,
+    session: AsyncSession = Depends(get_session),
+):
+    """Récupère les métadonnées d'un fichier."""
+    file_meta = await get_owned(session, FileMetadata, file_id, current_user)
+    if not file_meta:
+        raise HTTPException(status_code=404, detail="Fichier non trouvé")
+
+    return _build_response(file_meta)
+
+
+@router.delete("/{file_id}")
+async def delete_file(
+    file_id: str,
+    current_user: CurrentUser,
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Supprime un fichier (métadonnées + fichier physique).
+
+    Supprime également les chunks indexés dans Qdrant si disponible.
+    """
+    file_meta = await get_owned(session, FileMetadata, file_id, current_user)
+    if not file_meta:
+        raise HTTPException(status_code=404, detail="Fichier non trouvé")
+
+    # Supprimer les chunks Qdrant si disponible
+    qdrant_cleaned = False
+    try:
+        from app.services.rag import get_rag_service
+        rag = get_rag_service()
+        status = rag.is_available()
+        if status["ready"]:
+            await asyncio.to_thread(rag.delete_file_chunks, file_id)
+            qdrant_cleaned = True
+    except Exception as e:
+        logger.warning("Impossible de supprimer les chunks Qdrant : %s", e)
+
+    # Supprimer le fichier physique
+    file_path = Path(file_meta.path)
+    if file_path.exists():
+        try:
+            file_path.unlink()
+            logger.info("Fichier physique supprimé : %s", file_path)
+        except OSError as e:
+            logger.warning("Impossible de supprimer le fichier physique : %s", e)
+
+    # Supprimer l'entrée en base
+    await session.delete(file_meta)
+
+    return {
+        "deleted": True,
+        "id": file_id,
+        "qdrant_cleaned": qdrant_cleaned,
+    }
+
+
+@router.post("/{file_id}/index")
+async def index_file(
+    file_id: str,
+    current_user: CurrentUser,
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Indexe un fichier pour la recherche RAG.
+
+    Extrait le texte, le découpe en chunks et stocke les embeddings
+    dans Qdrant (si disponible).
+    """
+    file_meta = await get_owned(session, FileMetadata, file_id, current_user)
+    if not file_meta:
+        raise HTTPException(status_code=404, detail="Fichier non trouvé")
+
+    # Vérifier la disponibilité du service RAG
+    try:
+        from app.services.rag import chunk_text, get_rag_service
+    except ImportError:
+        raise HTTPException(
+            status_code=503,
+            detail="Service RAG non disponible",
+        )
+
+    rag = get_rag_service()
+    status = rag.is_available()
+
+    if not status["ready"]:
+        missing = []
+        if not status["qdrant"]:
+            missing.append("qdrant-client")
+        if not status["embeddings"]:
+            missing.append("sentence-transformers")
+        return {
+            "id": file_id,
+            "indexed": False,
+            "message": (
+                f"Dépendances manquantes : {', '.join(missing)}. "
+                "Indexation non disponible en mode développement."
+            ),
+            "dependencies": status,
+        }
+
+    # Vérifier que le fichier existe sur le disque
+    file_path = Path(file_meta.path)
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Le fichier n'existe plus sur le disque",
+        )
+
+    # Extraire le texte
+    text_content = _extract_text_simple(file_path)
+    if not text_content or text_content.startswith("["):
+        # Le texte commence par [ = message de fallback (lib manquante)
+        return {
+            "id": file_id,
+            "indexed": False,
+            "message": text_content or "Impossible d'extraire le texte de ce fichier",
+            "chunk_count": 0,
+        }
+
+    # Chunker le texte
+    chunks = chunk_text(
+        text_content,
+        chunk_size=settings.chunk_size,
+        overlap=settings.chunk_overlap,
+    )
+
+    if not chunks:
+        return {
+            "id": file_id,
+            "indexed": False,
+            "message": "Aucun contenu textuel à indexer",
+            "chunk_count": 0,
+        }
+
+    # Supprimer les anciens chunks si ré-indexation
+    if file_meta.chunk_count > 0:
+        try:
+            await asyncio.to_thread(rag.delete_file_chunks, file_id)
+        except Exception as e:
+            logger.warning("Erreur suppression anciens chunks : %s", e)
+
+    # Indexer dans Qdrant
+    org_id = current_user.org_id or "default"
+    try:
+        count = await asyncio.to_thread(
+            rag.index_chunks,
+            file_id,
+            org_id,
+            chunks,
+            file_meta.name,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error("Erreur indexation fichier %s : %s", file_id, e)
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur lors de l'indexation du fichier",
+        )
+
+    # Mettre à jour les métadonnées
+    file_meta.chunk_count = count
+    file_meta.indexed_at = datetime.now(UTC)
+    file_meta.updated_at = datetime.now(UTC)
+    session.add(file_meta)
+
+    logger.info(
+        "Fichier indexé : %s (%d chunks) par %s",
+        file_meta.name, count, current_user.email,
+    )
+
+    return {
+        "id": file_id,
+        "indexed": True,
+        "chunk_count": count,
+        "file_name": file_meta.name,
+        "indexed_at": file_meta.indexed_at.isoformat(),
+    }
+
+
+@router.post("/search", response_model=SearchResponse)
+async def search_files(
+    request: SearchRequest,
+    current_user: CurrentUser,
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Recherche sémantique dans les documents indexés.
+
+    Interroge Qdrant pour trouver les chunks les plus pertinents
+    par rapport à la requête, filtrés par organisation.
+    """
+    # Vérifier la disponibilité du service RAG
+    try:
+        from app.services.rag import get_rag_service
+    except ImportError:
+        raise HTTPException(
+            status_code=503,
+            detail="Service RAG non disponible",
+        )
+
+    rag = get_rag_service()
+    status = rag.is_available()
+
+    if not status["ready"]:
+        missing = []
+        if not status["qdrant"]:
+            missing.append("qdrant-client")
+        if not status["embeddings"]:
+            missing.append("sentence-transformers")
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Recherche sémantique non disponible. "
+                f"Dépendances manquantes : {', '.join(missing)}"
+            ),
+        )
+
+    org_id = current_user.org_id or "default"
+
+    try:
+        results = await asyncio.to_thread(
+            rag.search,
+            request.query,
+            org_id,
+            request.limit,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error("Erreur recherche RAG : %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Erreur lors de la recherche",
+        )
+
+    search_results = [
+        SearchResult(
+            text=r["text"],
+            score=r["score"],
+            file_id=r.get("file_id"),
+            file_name=r.get("file_name"),
+            chunk_index=r.get("chunk_index"),
+            total_chunks=r.get("total_chunks"),
+        )
+        for r in results
+    ]
+
+    return SearchResponse(
+        query=request.query,
+        results=search_results,
+        total=len(search_results),
     )
