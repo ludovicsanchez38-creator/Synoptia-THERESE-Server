@@ -45,7 +45,7 @@ export async function apiFetch<T>(
   if (response.status === 401) {
     localStorage.removeItem("therese_token");
     window.location.href = "/login";
-    throw new Error("Session expir\u00e9e");
+    throw new Error("Session expirée");
   }
 
   if (!response.ok) {

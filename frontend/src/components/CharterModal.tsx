@@ -5,28 +5,28 @@ import Spinner from "./ui/Spinner";
 
 const CHARTER_SECTIONS = [
   {
-    title: "1. V\u00e9rification",
-    text: "Toujours v\u00e9rifier les r\u00e9ponses de l\u2019IA avant de les utiliser dans un contexte professionnel. L\u2019IA peut produire des informations inexactes.",
+    title: "1. Vérification",
+    text: "Toujours vérifier les réponses de l'IA avant de les utiliser dans un contexte professionnel. L'IA peut produire des informations inexactes.",
   },
   {
-    title: "2. Confidentialit\u00e9",
-    text: "Ne pas saisir de donn\u00e9es personnelles sensibles (num\u00e9ros de s\u00e9curit\u00e9 sociale, mots de passe, donn\u00e9es m\u00e9dicales) dans les conversations.",
+    title: "2. Confidentialité",
+    text: "Ne pas saisir de données personnelles sensibles (numéros de sécurité sociale, mots de passe, données médicales) dans les conversations.",
   },
   {
-    title: "3. Responsabilit\u00e9",
-    text: "Vous restez responsable des d\u00e9cisions prises sur la base des suggestions de l\u2019IA. L\u2019IA est un outil d\u2019aide, pas un d\u00e9cideur.",
+    title: "3. Responsabilité",
+    text: "Vous restez responsable des décisions prises sur la base des suggestions de l'IA. L'IA est un outil d'aide, pas un décideur.",
   },
   {
-    title: "4. \u00c9thique",
-    text: "Ne pas utiliser l\u2019IA pour produire du contenu discriminatoire, trompeur ou contraire aux valeurs de votre organisation.",
+    title: "4. Éthique",
+    text: "Ne pas utiliser l'IA pour produire du contenu discriminatoire, trompeur ou contraire aux valeurs de votre organisation.",
   },
   {
     title: "5. Transparence",
-    text: "Signaler \u00e0 vos coll\u00e8gues et administr\u00e9s lorsqu\u2019un contenu a \u00e9t\u00e9 produit avec l\u2019aide de l\u2019IA.",
+    text: "Signaler à vos collègues et administrés lorsqu'un contenu a été produit avec l'aide de l'IA.",
   },
   {
-    title: "6. Protection des donn\u00e9es",
-    text: "Les conversations sont stock\u00e9es sur les serveurs de votre organisation. Elles peuvent \u00eatre audit\u00e9es par l\u2019administrateur.",
+    title: "6. Protection des données",
+    text: "Les conversations sont stockées sur les serveurs de votre organisation. Elles peuvent être auditées par l'administrateur.",
   },
 ];
 
@@ -45,7 +45,7 @@ export default function CharterModal() {
       setError(
         err instanceof Error
           ? err.message
-          : "Une erreur est survenue. Veuillez r\u00e9essayer."
+          : "Une erreur est survenue. Veuillez réessayer."
       );
       setIsSubmitting(false);
     }
@@ -76,7 +76,7 @@ export default function CharterModal() {
           className="px-8 pb-4 text-sm"
           style={{ color: "var(--color-muted)" }}
         >
-          En utilisant Th\u00e9r\u00e8se, vous vous engagez \u00e0 :
+          En utilisant Thérèse, vous vous engagez à :
         </p>
 
         {/* Charter sections */}

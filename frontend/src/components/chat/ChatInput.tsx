@@ -57,8 +57,8 @@ export default function ChatInput() {
           onKeyDown={handleKeyDown}
           placeholder={
             currentConversationId
-              ? "\u00c9crivez votre message... (Entr\u00e9e pour envoyer)"
-              : "S\u00e9lectionnez une conversation"
+              ? "Écrivez votre message... (Entrée pour envoyer)"
+              : "Sélectionnez une conversation"
           }
           disabled={!currentConversationId}
           rows={1}

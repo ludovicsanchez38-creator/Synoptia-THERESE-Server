@@ -17,12 +17,12 @@ const CATEGORY_META: Record<
   { label: string; icon: React.ComponentType<{ size?: number; className?: string }> }
 > = {
   courrier: { label: "Courrier", icon: Mail },
-  deliberation: { label: "D\u00e9lib\u00e9ration", icon: Scale },
+  deliberation: { label: "Délibération", icon: Scale },
   note: { label: "Note", icon: FileText },
-  synthese: { label: "Synth\u00e8se", icon: ClipboardList },
+  synthese: { label: "Synthèse", icon: ClipboardList },
   communication: { label: "Communication", icon: Megaphone },
   rh: { label: "Ressources humaines", icon: Users },
-  general: { label: "G\u00e9n\u00e9ral", icon: Sparkles },
+  general: { label: "Général", icon: Sparkles },
 };
 
 function getIconComponent(
@@ -122,10 +122,10 @@ export default function TemplateSelector({ onSelect }: TemplateSelectorProps) {
         type="button"
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1.5 px-3 py-2 text-sm text-[var(--color-muted)] hover:text-[var(--color-text)] bg-slate-800/50 hover:bg-slate-800 border border-slate-700 rounded-lg transition-colors"
-        title="Mod\u00e8les de prompts"
+        title="Modèles de prompts"
       >
         <FileText size={16} />
-        <span className="hidden sm:inline">Mod\u00e8les</span>
+        <span className="hidden sm:inline">Modèles</span>
         <ChevronDown size={14} className={`transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
@@ -134,7 +134,7 @@ export default function TemplateSelector({ onSelect }: TemplateSelectorProps) {
           {/* En-tete */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
             <h3 className="text-sm font-semibold text-[var(--color-text)]">
-              Mod\u00e8les de prompts
+              Modèles de prompts
             </h3>
             <button
               type="button"
@@ -159,7 +159,7 @@ export default function TemplateSelector({ onSelect }: TemplateSelectorProps) {
 
             {!loading && !error && templates.length === 0 && (
               <p className="text-sm text-[var(--color-muted)] text-center py-4">
-                Aucun mod\u00e8le disponible. Un administrateur peut initialiser les mod\u00e8les par d\u00e9faut.
+                Aucun modèle disponible. Un administrateur peut initialiser les modèles par défaut.
               </p>
             )}
 

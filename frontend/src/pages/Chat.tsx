@@ -38,7 +38,7 @@ export default function ChatPage() {
             </svg>
           </button>
           <h1 className="text-lg font-bold text-[var(--color-cyan)]">
-            Th{"\u00e9"}r{"\u00e8"}se
+            Th{"é"}r{"è"}se
           </h1>
           {user?.org_name && (
             <span className="text-xs text-[var(--color-muted)] bg-slate-800 px-2 py-0.5 rounded hidden sm:inline">
@@ -62,7 +62,7 @@ export default function ChatPage() {
             onClick={logout}
             className="text-xs text-[var(--color-muted)] hover:text-red-400 transition-colors"
           >
-            D{"\u00e9"}connexion
+            D{"é"}connexion
           </button>
         </div>
       </header>

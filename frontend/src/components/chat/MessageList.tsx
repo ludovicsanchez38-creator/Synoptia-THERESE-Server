@@ -24,9 +24,9 @@ export default function MessageList() {
     return (
       <div className="flex-1 flex items-center justify-center text-[var(--color-muted)]">
         <div className="text-center">
-          <p className="text-lg mb-2">Bienvenue sur Th\u00e9r\u00e8se</p>
+          <p className="text-lg mb-2">Bienvenue sur Thérèse</p>
           <p className="text-sm">
-            S\u00e9lectionnez ou cr\u00e9ez une conversation pour commencer.
+            Sélectionnez ou créez une conversation pour commencer.
           </p>
         </div>
       </div>
@@ -66,7 +66,7 @@ export default function MessageList() {
               {!isUser && (
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-medium text-[var(--color-cyan)]">
-                    Th\u00e9r\u00e8se
+                    Thérèse
                   </span>
                   {msg.model && (
                     <span className="text-[10px] text-[var(--color-muted)] bg-slate-700/50 px-1.5 py-0.5 rounded">
@@ -95,11 +95,11 @@ export default function MessageList() {
           <div className="bg-slate-800/60 border border-slate-700 rounded-2xl rounded-bl-md px-4 py-3">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-[var(--color-cyan)]">
-                Th\u00e9r\u00e8se
+                Thérèse
               </span>
               <Spinner size="sm" />
               <span className="text-xs text-[var(--color-muted)]">
-                R\u00e9flexion en cours...
+                Réflexion en cours...
               </span>
             </div>
           </div>
