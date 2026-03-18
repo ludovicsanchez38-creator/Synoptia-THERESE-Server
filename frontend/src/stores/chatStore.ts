@@ -21,7 +21,7 @@ interface ChatState {
   selectConversation: (id: string) => Promise<void>;
   newConversation: (title?: string) => Promise<void>;
   removeConversation: (id: string) => Promise<void>;
-  send: (content: string) => Promise<void>;
+  send: (content: string, model?: string) => Promise<void>;
   clearError: () => void;
   reset: () => void;
 }
@@ -99,7 +99,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  send: async (content: string) => {
+  send: async (content: string, model?: string) => {
     const { currentConversationId } = get();
     if (!currentConversationId) return;
 
@@ -134,6 +134,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         body: JSON.stringify({
           conversation_id: currentConversationId,
           message: content,
+          model: model || undefined,
         }),
       });
 
