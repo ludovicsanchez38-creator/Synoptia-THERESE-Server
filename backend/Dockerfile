@@ -2,21 +2,36 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Dépendances système
-RUN apt-get update && apt-get install -y --no-install-recommends     gcc     libpq-dev     && rm -rf /var/lib/apt/lists/*
+# Dependances systeme (compilateur C pour les packages natifs, libpq pour PostgreSQL)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libpq-dev && rm -rf /var/lib/apt/lists/*
 
-# Installer UV pour la gestion des dépendances
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
-
-# Copier les dépendances
+# Dependances Python - installees avant le code pour profiter du cache Docker
 COPY pyproject.toml .
-RUN uv pip install --system -r pyproject.toml 2>/dev/null || uv pip install --system .
+RUN pip install --no-cache-dir \
+    fastapi uvicorn pydantic pydantic-settings sqlmodel \
+    aiosqlite asyncpg psycopg2-binary greenlet alembic \
+    bcrypt "python-jose[cryptography]" \
+    httpx python-multipart aiofiles pyyaml \
+    slowapi "python-json-logger" \
+    anthropic openai "google-genai" \
+    qdrant-client sentence-transformers einops \
+    python-docx python-pptx openpyxl reportlab \
+    pypdf python-magic Pillow cryptography \
+    beautifulsoup4 google-auth google-auth-oauthlib \
+    google-auth-httplib2 google-api-python-client \
+    imap-tools aiosmtplib caldav icalendar pytz
 
-# Copier le code
+# Copier le code source
 COPY . .
 
-# Port
+# Repertoire de donnees persistantes
+RUN mkdir -p /var/lib/therese
+
 EXPOSE 8000
 
-# Lancer
+# Healthcheck integre
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

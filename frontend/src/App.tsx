@@ -4,6 +4,7 @@ import { useAuthStore } from "./stores/authStore";
 import LoginPage from "./pages/Login";
 import ChatPage from "./pages/Chat";
 import AdminDashboard from "./pages/admin/Dashboard";
+import CharterModal from "./components/CharterModal";
 import Spinner from "./components/ui/Spinner";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -20,7 +21,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { isLoading, checkAuth } = useAuthStore();
+  const { user, isLoading, checkAuth } = useAuthStore();
 
   useEffect(() => {
     checkAuth();
@@ -37,6 +38,11 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  // Charte IA obligatoire avant toute utilisation
+  if (user && !user.charter_accepted) {
+    return <CharterModal />;
   }
 
   return (

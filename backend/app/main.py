@@ -74,7 +74,32 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
-        description="Assistant IA multi-utilisateurs pour collectivités et PME",
+        description="""
+## Thérèse Server - API REST
+
+Assistant IA multi-utilisateurs pour collectivités et PME.
+
+### Authentification
+
+Tous les endpoints (sauf /health et /api/auth/login) nécessitent un token JWT.
+
+```
+Authorization: Bearer <token>
+```
+
+### Rôles
+
+| Rôle | Description | Accès |
+|-------|-------------|-------|
+| admin | DSI, administrateur | Tout |
+| manager | Chef de service | Chat, contacts, config |
+| agent | Utilisateur standard | Chat, contacts |
+
+### Multi-tenant
+
+Chaque utilisateur ne voit que ses propres données.
+Les admins voient les utilisateurs de leur organisation.
+""",
         lifespan=lifespan,
         docs_url="/docs",
         redoc_url="/redoc",

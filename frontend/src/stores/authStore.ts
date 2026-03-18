@@ -7,6 +7,7 @@ export interface User {
   role: "admin" | "manager" | "agent";
   org_id: string;
   org_name: string;
+  charter_accepted: boolean;
 }
 
 interface AuthState {
@@ -16,9 +17,10 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
+  acceptCharter: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: localStorage.getItem("therese_token"),
   isLoading: true,
@@ -70,6 +72,29 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
     } catch {
       set({ isLoading: false });
+    }
+  },
+
+  acceptCharter: async () => {
+    const token = get().token;
+    if (!token) throw new Error("Non authentifie");
+
+    const response = await fetch("/api/auth/charter", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ accepted: true }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Erreur lors de l'acceptation de la charte");
+    }
+
+    const user = get().user;
+    if (user) {
+      set({ user: { ...user, charter_accepted: true } });
     }
   },
 }));
