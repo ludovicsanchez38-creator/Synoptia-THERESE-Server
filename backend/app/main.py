@@ -198,6 +198,9 @@ Les admins voient les utilisateurs de leur organisation.
     from app.routers.chat import router as chat_router
     app.include_router(chat_router, prefix="/api/chat", tags=["chat"])
 
+    from app.routers.chat_llm import router as chat_llm_router
+    app.include_router(chat_llm_router, prefix="/api/chat", tags=["chat-llm"])
+
     from app.routers.memory import router as memory_router
     app.include_router(memory_router, prefix="/api/memory", tags=["memory"])
 
@@ -209,6 +212,12 @@ Les admins voient les utilisateurs de leur organisation.
 
     from app.routers.rgpd import router as rgpd_router
     app.include_router(rgpd_router, prefix="/api/rgpd", tags=["rgpd"])
+
+    from app.routers.templates import router as templates_router
+    app.include_router(templates_router, prefix="/api/templates", tags=["templates"])
+
+    from app.routers.files import router as files_router
+    app.include_router(files_router, prefix="/api/files", tags=["files"])
     # Les routers seront activés au fur et à mesure de P0-4
     # from app.routers import chat_router, config_router, memory_router, ...
 

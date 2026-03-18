@@ -4,9 +4,9 @@ import {
   createConversation,
   deleteConversation,
   fetchMessages,
-  sendMessage,
 } from "../services/api/chatService";
 import type { Conversation, Message } from "../services/api/chatService";
+import { getToken } from "../services/api/authService";
 
 interface ChatState {
   conversations: Conversation[];
@@ -75,7 +75,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
     } catch (err) {
       set({
-        error: err instanceof Error ? err.message : "Erreur de cr\u00e9ation",
+        error: err instanceof Error ? err.message : "Erreur de création",
       });
     }
   },
@@ -107,39 +107,98 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Ajouter le message utilisateur localement (optimistic)
     const tempUserMsg: Message = {
-      id: `temp-${Date.now()}`,
+      id: `temp-user-${Date.now()}`,
       role: "user",
       content,
       created_at: new Date().toISOString(),
     };
-    set((state) => ({ messages: [...state.messages, tempUserMsg] }));
+    // Ajouter un message assistant vide pour le streaming
+    const tempAssistantMsg: Message = {
+      id: `temp-assistant-${Date.now()}`,
+      role: "assistant",
+      content: "",
+      created_at: new Date().toISOString(),
+    };
+    set((state) => ({
+      messages: [...state.messages, tempUserMsg, tempAssistantMsg],
+    }));
 
     try {
-      const userMsg = await sendMessage(currentConversationId, content, "user");
+      const token = getToken();
+      const response = await fetch("/api/chat/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          conversation_id: currentConversationId,
+          message: content,
+        }),
+      });
 
-      // Remplacer le message temporaire par le vrai
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m.id === tempUserMsg.id ? userMsg : m
-        ),
-      }));
+      if (!response.ok) {
+        throw new Error("Erreur lors de l'envoi du message");
+      }
 
-      // Recharger les messages pour obtenir la r\u00e9ponse de l'assistant
-      // (le backend peut g\u00e9n\u00e9rer une r\u00e9ponse automatiquement)
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("Streaming non supporté");
+
+      const decoder = new TextDecoder();
+      let assistantContent = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const text = decoder.decode(value, { stream: true });
+        const lines = text.split("\n");
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          try {
+            const event = JSON.parse(jsonStr);
+            if (event.type === "chunk") {
+              assistantContent += event.content;
+              // Mettre à jour le message assistant en temps réel
+              set((state) => ({
+                messages: state.messages.map((m) =>
+                  m.id === tempAssistantMsg.id
+                    ? { ...m, content: assistantContent }
+                    : m
+                ),
+              }));
+            } else if (event.type === "error") {
+              set({ error: event.content });
+            }
+          } catch {
+            // Ignorer les lignes SSE malformées
+          }
+        }
+      }
+
+      // Recharger les messages pour avoir les vrais IDs
       const messages = await fetchMessages(currentConversationId);
       set({ messages, isSending: false });
 
-      // Mettre \u00e0 jour le compteur de messages dans la liste
+      // Mettre à jour le compteur
       set((state) => ({
         conversations: state.conversations.map((c) =>
           c.id === currentConversationId
-            ? { ...c, message_count: messages.length, updated_at: new Date().toISOString() }
+            ? {
+                ...c,
+                message_count: messages.length,
+                updated_at: new Date().toISOString(),
+              }
             : c
         ),
       }));
     } catch (err) {
       set({
-        error: err instanceof Error ? err.message : "Erreur d\u0027envoi",
+        error: err instanceof Error ? err.message : "Erreur d'envoi",
         isSending: false,
       });
     }
