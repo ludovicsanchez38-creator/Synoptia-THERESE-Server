@@ -135,7 +135,7 @@ class LocalCalendarProvider(CalendarProvider):
             except pytz.UnknownTimeZoneError:
                 pass  # Keep existing timezone
 
-        calendar.updated_at = datetime.now(UTC)
+        calendar.updated_at = datetime.utcnow()
 
         self._session.add(calendar)
         await self._session.commit()
@@ -312,7 +312,7 @@ class LocalCalendarProvider(CalendarProvider):
             import json
             event.attendees = json.dumps(request.attendees) if request.attendees else None
 
-        event.synced_at = datetime.now(UTC)
+        event.synced_at = datetime.utcnow()
 
         self._session.add(event)
         await self._session.commit()

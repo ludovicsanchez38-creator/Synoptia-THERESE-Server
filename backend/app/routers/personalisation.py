@@ -135,7 +135,7 @@ async def update_prompt_template(
     if request.icon is not None:
         template.icon = request.icon
 
-    template.updated_at = datetime.now(UTC)
+    template.updated_at = datetime.utcnow()
     await session.commit()
     await session.refresh(template)
 
@@ -210,7 +210,7 @@ async def set_llm_behavior(
 
     if pref:
         pref.value = value
-        pref.updated_at = datetime.now(UTC)
+        pref.updated_at = datetime.utcnow()
     else:
         pref = Preference(
             key="llm_behavior",
@@ -263,7 +263,7 @@ async def set_feature_visibility(
 
     if pref:
         pref.value = value
-        pref.updated_at = datetime.now(UTC)
+        pref.updated_at = datetime.utcnow()
     else:
         pref = Preference(
             key="feature_visibility",

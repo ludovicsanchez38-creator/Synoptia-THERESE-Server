@@ -202,7 +202,7 @@ async def add_message(
     session.add(message)
 
     # Mettre à jour le timestamp de la conversation
-    conversation.updated_at = datetime.now(UTC)
+    conversation.updated_at = datetime.utcnow()
     session.add(conversation)
 
     await session.commit()

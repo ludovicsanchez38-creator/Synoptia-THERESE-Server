@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./stores/authStore";
 import LoginPage from "./pages/Login";
 import ChatPage from "./pages/Chat";
+import TasksPage from "./pages/Tasks";
+import CRMPage from "./pages/CRM";
 import AdminDashboard from "./pages/admin/Dashboard";
 import CharterModal from "./components/CharterModal";
 import Spinner from "./components/ui/Spinner";
@@ -53,6 +55,22 @@ export default function App() {
         element={
           <PrivateRoute>
             <ChatPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/tasks"
+        element={
+          <PrivateRoute>
+            <TasksPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/crm"
+        element={
+          <PrivateRoute>
+            <CRMPage />
           </PrivateRoute>
         }
       />

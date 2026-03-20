@@ -1,71 +1,42 @@
 import { useState } from "react";
-import { useAuthStore } from "../stores/authStore";
 import { useChatStore } from "../stores/chatStore";
+import NavBar from "../components/NavBar";
 import ConversationList from "../components/chat/ConversationList";
 import MessageList from "../components/chat/MessageList";
 import ChatInput from "../components/chat/ChatInput";
 
 export default function ChatPage() {
-  const { user, logout } = useAuthStore();
   const { error, clearError } = useChatStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-slate-800 shrink-0">
-        <div className="flex items-center gap-3">
-          {/* Bouton menu mobile */}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="md:hidden text-[var(--color-muted)] hover:text-[var(--color-text)]"
-            aria-label="Menu"
+      {/* Header avec NavBar */}
+      <div className="shrink-0 relative">
+        <NavBar />
+        {/* Bouton menu mobile pour sidebar conversations */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="md:hidden absolute left-2 top-1/2 -translate-y-1/2 text-[var(--color-muted)] hover:text-[var(--color-text)] p-1"
+          aria-label="Menu conversations"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M3 12h18" />
-              <path d="M3 6h18" />
-              <path d="M3 18h18" />
-            </svg>
-          </button>
-          <h1 className="text-lg font-bold text-[var(--color-cyan)]">
-            Th{"é"}r{"è"}se
-          </h1>
-          {user?.org_name && (
-            <span className="text-xs text-[var(--color-muted)] bg-slate-800 px-2 py-0.5 rounded hidden sm:inline">
-              {user.org_name}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-[var(--color-muted)] hidden sm:inline">
-            {user?.name}
-          </span>
-          {user?.role === "admin" && (
-            <a
-              href="/admin"
-              className="text-xs text-[var(--color-primary)] hover:underline"
-            >
-              Admin
-            </a>
-          )}
-          <button
-            onClick={logout}
-            className="text-xs text-[var(--color-muted)] hover:text-red-400 transition-colors"
-          >
-            D{"é"}connexion
-          </button>
-        </div>
-      </header>
+            <path d="M3 12h18" />
+            <path d="M3 6h18" />
+            <path d="M3 18h18" />
+          </svg>
+        </button>
+      </div>
 
       {/* Bandeau d'erreur */}
       {error && (

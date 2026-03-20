@@ -105,6 +105,38 @@ async def _get_llm_response(
     except Exception as e:
         logger.warning("OpenAI error: %s", e)
 
+
+    # Essayer Google Gemini
+    try:
+        from google import genai
+
+        api_key = settings.google_api_key
+        if api_key:
+            client = genai.Client(api_key=api_key)
+            model_name = model if model and ("gemini" in model.lower()) else "gemini-2.0-flash-lite"
+            system_msg = (
+                "Tu es Therese, une assistante IA professionnelle pour les "
+                "collectivites et PME francaises. Reponds en francais, "
+                "de maniere claire et structuree."
+            )
+            response = client.models.generate_content_stream(
+                model=model_name,
+                contents=[
+                    {"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]}
+                    for m in messages
+                    if m["role"] in ("user", "assistant")
+                ],
+                config={"system_instruction": system_msg, "max_output_tokens": 4096},
+            )
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+            return
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning("Google Gemini error: %s", e)
+
     # Essayer Ollama (local)
     try:
         import httpx
@@ -163,7 +195,7 @@ async def send_message_stream(
         content=data.message,
     )
     session.add(user_msg)
-    conversation.updated_at = datetime.now(UTC)
+    conversation.updated_at = datetime.utcnow()
     session.add(conversation)
     await session.commit()
 

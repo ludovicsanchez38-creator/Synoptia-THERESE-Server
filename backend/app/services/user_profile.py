@@ -178,7 +178,7 @@ async def set_user_profile(
         if pref:
             pref.value = encrypted_value
             pref.category = PROFILE_CATEGORY
-            pref.updated_at = datetime.now(UTC)
+            pref.updated_at = datetime.utcnow()
         else:
             pref = Preference(
                 key=PROFILE_KEY,

@@ -196,12 +196,12 @@ class CalDAVProvider(CalendarProvider):
 
             # Set default time range
             if not time_min:
-                time_min_dt = datetime.now(UTC) - timedelta(days=30)
+                time_min_dt = datetime.utcnow() - timedelta(days=30)
             else:
                 time_min_dt = time_min
 
             if not time_max:
-                time_max_dt = datetime.now(UTC) + timedelta(days=365)
+                time_max_dt = datetime.utcnow() + timedelta(days=365)
             else:
                 time_max_dt = time_max
 
@@ -320,7 +320,7 @@ class CalDAVProvider(CalendarProvider):
                     else:
                         vevent.add("rrule", rrule)
 
-            vevent.add("dtstamp", datetime.now(UTC))
+            vevent.add("dtstamp", datetime.utcnow())
 
             ical.add_component(vevent)
 

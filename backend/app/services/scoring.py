@@ -79,7 +79,7 @@ def calculate_base_score(contact: Contact) -> int:
         last = contact.last_interaction
         if last.tzinfo is None:
             last = last.replace(tzinfo=UTC)
-        days_inactive = (datetime.now(UTC) - last).days
+        days_inactive = (datetime.utcnow() - last).days
         if days_inactive >= 30:
             # -5 points tous les 30 jours
             decay_count = days_inactive // 30
@@ -105,7 +105,7 @@ async def update_contact_score(session: AsyncSession, contact: Contact, reason: 
 
     if old_score != new_score:
         contact.score = new_score
-        contact.updated_at = datetime.now(UTC)
+        contact.updated_at = datetime.utcnow()
         session.add(contact)
 
         # Créer une activité

@@ -261,7 +261,7 @@ AUTORISÉ : les listes à puces (- point clé : valeur).
             "janvier", "février", "mars", "avril", "mai", "juin",
             "juillet", "août", "septembre", "octobre", "novembre", "décembre",
         ]
-        now = datetime.now(UTC)
+        now = datetime.utcnow()
         day = str(now.day)
         month_fr = _MOIS_FR[now.month - 1]
         current_date = f"{day} {month_fr} {now.strftime('%Y, %H:%M')} UTC"

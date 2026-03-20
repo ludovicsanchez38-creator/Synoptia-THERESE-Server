@@ -158,7 +158,7 @@ async def set_preference(
     if pref:
         pref.value = request.value
         pref.category = request.category
-        pref.updated_at = datetime.now(UTC)
+        pref.updated_at = datetime.utcnow()
     else:
         pref = Preference(
             key=key,

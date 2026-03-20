@@ -600,7 +600,7 @@ class CRMImportService:
                     if mapped.get("notes"):
                         existing.notes = mapped["notes"]
 
-                    existing.updated_at = datetime.now(UTC)
+                    existing.updated_at = datetime.utcnow()
                     self.session.add(existing)
                     result.updated += 1
 
@@ -741,7 +741,7 @@ class CRMImportService:
                     if mapped.get("tags"):
                         existing.tags = _parse_value(mapped["tags"], "tags")
 
-                    existing.updated_at = datetime.now(UTC)
+                    existing.updated_at = datetime.utcnow()
                     self.session.add(existing)
                     result.updated += 1
 
@@ -879,7 +879,7 @@ class CRMImportService:
                     if mapped.get("due_date"):
                         existing.due_date = _parse_value(mapped["due_date"], "datetime")
 
-                    existing.updated_at = datetime.now(UTC)
+                    existing.updated_at = datetime.utcnow()
                     self.session.add(existing)
                     result.updated += 1
 

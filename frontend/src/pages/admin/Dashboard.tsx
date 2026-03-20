@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuthStore } from "../../stores/authStore";
+import NavBar from "../../components/NavBar";
 import {
   fetchAdminStats,
   fetchUsers,
@@ -238,25 +239,10 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen">
-      <header className="flex items-center justify-between px-6 py-3 border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-bold text-[var(--color-cyan)]">
-            Therese Admin
-          </h1>
-          <span className="text-xs text-[var(--color-muted)] bg-slate-800 px-2 py-0.5 rounded">
-            {user?.org_name}
-          </span>
-        </div>
-        <a
-          href="/chat"
-          className="text-sm text-[var(--color-primary)] hover:underline"
-        >
-          Retour au chat
-        </a>
-      </header>
+    <div className="min-h-screen flex flex-col">
+      <NavBar />
 
-      <main className="p-6 max-w-7xl mx-auto">
+      <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
         {/* Onglets */}
         <div className="flex gap-1 mb-6 border-b border-slate-800">
           {(

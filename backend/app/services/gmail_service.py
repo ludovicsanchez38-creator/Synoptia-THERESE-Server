@@ -444,5 +444,5 @@ def format_message_for_storage(gmail_message: dict) -> dict:
         'body_plain': body_plain,
         'body_html': body_html,
         'size_bytes': gmail_message.get('sizeEstimate', 0),
-        'synced_at': datetime.now(UTC),
+        'synced_at': datetime.utcnow(),
     }

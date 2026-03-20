@@ -307,7 +307,7 @@ async def update_template(
     if body.icon is not None:
         template.icon = body.icon
 
-    template.updated_at = datetime.now(UTC)
+    template.updated_at = datetime.utcnow()
     session.add(template)
     await session.commit()
     await session.refresh(template)

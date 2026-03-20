@@ -344,7 +344,7 @@ class CalendarProvider(ABC):
         Returns:
             List of upcoming events
         """
-        time_min = datetime.now(UTC)
+        time_min = datetime.utcnow()
         time_max = time_min + timedelta(days=days)
 
         events, _ = await self.list_events(

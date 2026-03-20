@@ -218,6 +218,51 @@ Les admins voient les utilisateurs de leur organisation.
 
     from app.routers.files import router as files_router
     app.include_router(files_router, prefix="/api/files", tags=["files"])
+
+    # --- P1 : Routers actives (rattrapage desktop) ---
+
+    from app.routers.tasks import router as tasks_router
+    app.include_router(tasks_router, prefix="/api/tasks", tags=["tasks"])
+
+    from app.routers.crm import router as crm_router
+    app.include_router(crm_router, prefix="/api/crm", tags=["crm"])
+
+    from app.routers.commands import router as commands_router
+    app.include_router(commands_router, prefix="/api/commands", tags=["commands"])
+
+    from app.routers.commands_v3 import router as commands_v3_router
+    app.include_router(commands_v3_router, prefix="/api/v3/commands", tags=["commands-v3"])
+
+    from app.routers.data import router as data_router
+    app.include_router(data_router, prefix="/api/data", tags=["data"])
+
+    from app.routers.calculators import router as calculators_router
+    app.include_router(calculators_router, prefix="/api/calc", tags=["calculators"])
+
+    from app.routers.performance import router as performance_router
+    app.include_router(performance_router, prefix="/api/perf", tags=["performance"])
+
+    from app.routers.personalisation import router as personalisation_router
+    app.include_router(personalisation_router, prefix="/api/personalisation", tags=["personalisation"])
+
+    try:
+        from app.routers.board import router as board_router
+        app.include_router(board_router, prefix="/api/board", tags=["board"])
+    except Exception as e:
+        logger.warning("Router board disabled: %s", e)
+
+    try:
+        from app.routers.invoices import router as invoices_router
+        app.include_router(invoices_router, prefix="/api/invoices", tags=["invoices"])
+    except Exception as e:
+        logger.warning("Router invoices disabled: %s", e)
+
+    try:
+        from app.routers.skills import router as skills_router
+        app.include_router(skills_router, prefix="/api/skills", tags=["skills"])
+    except Exception as e:
+        logger.warning("Router skills disabled: %s", e)
+
     # Les routers seront activés au fur et à mesure de P0-4
     # from app.routers import chat_router, config_router, memory_router, ...
 

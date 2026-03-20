@@ -215,7 +215,7 @@ async def accept_charter(
     """Accepter la charte IA (obligatoire au premier login)."""
     current_user.charter_accepted = body.accepted
     if body.accepted:
-        current_user.charter_accepted_at = datetime.now(UTC)
+        current_user.charter_accepted_at = datetime.utcnow()
     session.add(current_user)
     await session.commit()
 
