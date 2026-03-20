@@ -25,6 +25,51 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+# Singletons clients LLM (eviter recreation a chaque requete)
+_anthropic_client = None
+_openai_client = None
+_gemini_client = None
+
+
+def _get_anthropic():
+    global _anthropic_client
+    if _anthropic_client is None:
+        try:
+            import anthropic
+            key = settings.anthropic_api_key
+            if key:
+                _anthropic_client = anthropic.AsyncAnthropic(api_key=key)
+        except ImportError:
+            pass
+    return _anthropic_client
+
+
+def _get_openai():
+    global _openai_client
+    if _openai_client is None:
+        try:
+            import openai
+            key = settings.openai_api_key
+            if key:
+                _openai_client = openai.AsyncOpenAI(api_key=key)
+        except ImportError:
+            pass
+    return _openai_client
+
+
+def _get_gemini():
+    global _gemini_client
+    if _gemini_client is None:
+        try:
+            from google import genai
+            key = settings.google_api_key
+            if key:
+                _gemini_client = genai.Client(api_key=key)
+        except ImportError:
+            pass
+    return _gemini_client
+
+
 class ChatSendRequest(BaseModel):
     conversation_id: str
     message: str
@@ -38,11 +83,8 @@ async def _get_llm_response(
 
     # Essayer Anthropic
     try:
-        import anthropic
-
-        api_key = settings.anthropic_api_key
-        if api_key:
-            client = anthropic.AsyncAnthropic(api_key=api_key)
+        client = _get_anthropic()
+        if client:
             model_name = model or settings.claude_model or "claude-sonnet-4-6"
             system_msg = (
                 "Tu es Thérèse, une assistante IA professionnelle pour les "
@@ -64,18 +106,13 @@ async def _get_llm_response(
                 async for text in stream.text_stream:
                     yield text
             return
-    except ImportError:
-        pass
     except Exception as e:
         logger.warning("Anthropic error: %s", e)
 
     # Essayer OpenAI
     try:
-        import openai
-
-        api_key = settings.openai_api_key
-        if api_key:
-            client = openai.AsyncOpenAI(api_key=api_key)
+        client = _get_openai()
+        if client:
             model_name = model or "gpt-4o"
             system_msg = {
                 "role": "system",
@@ -100,19 +137,14 @@ async def _get_llm_response(
                 if chunk.choices and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
             return
-    except ImportError:
-        pass
     except Exception as e:
         logger.warning("OpenAI error: %s", e)
 
 
     # Essayer Google Gemini
     try:
-        from google import genai
-
-        api_key = settings.google_api_key
-        if api_key:
-            client = genai.Client(api_key=api_key)
+        client = _get_gemini()
+        if client:
             model_name = model if model and ("gemini" in model.lower()) else "gemini-2.0-flash-lite"
             system_msg = (
                 "Tu es Therese, une assistante IA professionnelle pour les "
@@ -132,8 +164,6 @@ async def _get_llm_response(
                 if chunk.text:
                     yield chunk.text
             return
-    except ImportError:
-        pass
     except Exception as e:
         logger.warning("Google Gemini error: %s", e)
 

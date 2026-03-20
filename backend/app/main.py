@@ -14,18 +14,18 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.gzip import GZipMiddleware
 
 # Rate limiting (SEC-015)
+from app.rate_limit import HAS_SLOWAPI, limiter
+
 try:
-    from slowapi import Limiter
     from slowapi.errors import RateLimitExceeded
     from slowapi.middleware import SlowAPIMiddleware
-    from slowapi.util import get_remote_address
-
-    HAS_SLOWAPI = True
 except ImportError:
-    HAS_SLOWAPI = False
+    pass
 
+from app.auth.backend import decode_access_token
 from app.models.database import close_db, init_db
 
 logger = logging.getLogger(__name__)
@@ -101,8 +101,8 @@ Chaque utilisateur ne voit que ses propres données.
 Les admins voient les utilisateurs de leur organisation.
 """,
         lifespan=lifespan,
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url="/docs" if settings.debug else None,
+        redoc_url="/redoc" if settings.debug else None,
     )
 
     # CORS - configurable par environnement
@@ -120,7 +120,6 @@ Les admins voient les utilisateurs de leur organisation.
 
     # Rate limiting
     if HAS_SLOWAPI:
-        limiter = Limiter(key_func=get_remote_address)
         app.state.limiter = limiter
         app.add_middleware(SlowAPIMiddleware)
 
@@ -130,6 +129,9 @@ Les admins voient les utilisateurs de leur organisation.
                 status_code=429,
                 content={"detail": "Trop de requêtes. Réessayez dans quelques instants."},
             )
+
+    # GZip compression (PERF)
+    app.add_middleware(GZipMiddleware, minimum_size=500)
 
     # Security headers
     @app.middleware("http")
@@ -144,6 +146,49 @@ Les admins voient les utilisateurs de leur organisation.
                 "max-age=31536000; includeSubDomains"
             )
         return response
+
+    # Auth middleware global (SEC-001) - JWT requis pour /api/* sauf routes publiques
+    @app.middleware("http")
+    async def auth_middleware(request: Request, call_next):
+        path = request.url.path
+        # Routes publiques (pas de JWT requis)
+        public_paths = [
+            "/health",
+            "/docs",
+            "/redoc",
+            "/openapi.json",
+            "/api/auth/login",
+            "/api/auth/refresh",
+        ]
+        if any(path.startswith(p) for p in public_paths) or not path.startswith("/api/"):
+            return await call_next(request)
+
+        # Verifier le token JWT
+        auth_header = request.headers.get("authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Token d'authentification requis"},
+            )
+
+        token = auth_header.split(" ", 1)[1]
+        try:
+            payload = decode_access_token(token)
+            if not payload:
+                return JSONResponse(
+                    status_code=401,
+                    content={"detail": "Token invalide ou expire"},
+                )
+            request.state.user_id = payload.get("sub")
+            request.state.user_role = payload.get("role")
+            request.state.org_id = payload.get("org_id")
+        except Exception:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Token invalide ou expire"},
+            )
+
+        return await call_next(request)
 
     # Error handlers
     @app.exception_handler(StarletteHTTPException)

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useChatStore } from "../stores/chatStore";
 import NavBar from "../components/NavBar";
 import ConversationList from "../components/chat/ConversationList";
@@ -8,6 +8,10 @@ import ChatInput from "../components/chat/ChatInput";
 export default function ChatPage() {
   const { error, clearError } = useChatStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    document.title = "Chat - Thérèse";
+  }, []);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
@@ -40,7 +44,7 @@ export default function ChatPage() {
 
       {/* Bandeau d'erreur */}
       {error && (
-        <div className="bg-red-500/10 border-b border-red-500/30 text-red-400 px-4 py-2 text-sm flex items-center justify-between shrink-0">
+        <div role="alert" className="bg-red-500/10 border-b border-red-500/30 text-red-400 px-4 py-2 text-sm flex items-center justify-between shrink-0">
           <span>{error}</span>
           <button
             onClick={clearError}

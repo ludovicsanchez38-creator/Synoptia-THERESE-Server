@@ -1,13 +1,15 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./stores/authStore";
-import LoginPage from "./pages/Login";
-import ChatPage from "./pages/Chat";
-import TasksPage from "./pages/Tasks";
-import CRMPage from "./pages/CRM";
-import AdminDashboard from "./pages/admin/Dashboard";
 import CharterModal from "./components/CharterModal";
 import Spinner from "./components/ui/Spinner";
+
+// Lazy-loaded pages (code splitting)
+const LoginPage = lazy(() => import("./pages/Login"));
+const ChatPage = lazy(() => import("./pages/Chat"));
+const TasksPage = lazy(() => import("./pages/Tasks"));
+const CRMPage = lazy(() => import("./pages/CRM"));
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
@@ -48,6 +50,7 @@ export default function App() {
   }
 
   return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-center"><Spinner size="lg" /><p className="mt-4 text-sm text-[var(--color-muted)]">Chargement...</p></div></div>}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route
@@ -84,5 +87,6 @@ export default function App() {
       />
       <Route path="*" element={<Navigate to="/chat" replace />} />
     </Routes>
+    </Suspense>
   );
 }

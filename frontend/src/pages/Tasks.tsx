@@ -61,6 +61,7 @@ export default function TasksPage() {
   }, []);
 
   useEffect(() => {
+    document.title = "T\u00e2ches - Th\u00e9r\u00e8se";
     loadTasks();
   }, [loadTasks]);
 
@@ -135,7 +136,7 @@ export default function TasksPage() {
 
         {/* Erreur */}
         {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm">
+          <div role="alert" className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm">
             {error}
             <button
               onClick={() => setError(null)}
@@ -146,7 +147,7 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* Formulaire de creation */}
+        {/* Formulaire de création */}
         {showForm && (
           <form
             onSubmit={handleCreate}
@@ -256,7 +257,7 @@ export default function TasksPage() {
           </div>
         )}
 
-        {/* Liste des taches */}
+        {/* Liste des tâches */}
         {!loading && filtered.length > 0 && (
           <div className="space-y-2">
             {filtered.map((task) => (
@@ -266,7 +267,7 @@ export default function TasksPage() {
                   task.status === "done" ? "opacity-60" : ""
                 }`}
               >
-                {/* Bouton completion */}
+                {/* Bouton complétion */}
                 <button
                   onClick={() =>
                     task.status !== "done" && handleComplete(task.id)

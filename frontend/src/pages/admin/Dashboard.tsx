@@ -50,9 +50,9 @@ function UsersTable({
           <tr className="border-b border-slate-700 text-left text-[var(--color-muted)]">
             <th className="pb-2 pr-4">Nom</th>
             <th className="pb-2 pr-4">Email</th>
-            <th className="pb-2 pr-4">Role</th>
+            <th className="pb-2 pr-4">Rôle</th>
             <th className="pb-2 pr-4">Statut</th>
-            <th className="pb-2 pr-4">Derniere connexion</th>
+            <th className="pb-2 pr-4">Dernière connexion</th>
             <th className="pb-2">Actions</th>
           </tr>
         </thead>
@@ -104,7 +104,7 @@ function UsersTable({
                         : "border-emerald-700 text-emerald-400 hover:bg-emerald-900/30"
                     }`}
                   >
-                    {u.is_active ? "Desactiver" : "Reactiver"}
+                    {u.is_active ? "Désactiver" : "Réactiver"}
                   </button>
                 )}
               </td>
@@ -120,9 +120,9 @@ function UsersTable({
 function AuditTable({ logs }: { logs: AuditLogItem[] }) {
   const actionLabels: Record<string, string> = {
     login: "Connexion",
-    logout: "Deconnexion",
+    logout: "Déconnexion",
     admin_update_user: "Modification utilisateur",
-    admin_deactivate_user: "Desactivation utilisateur",
+    admin_deactivate_user: "Désactivation utilisateur",
     admin_update_org: "Modification organisation",
     rgpd_delete_all_data: "Suppression RGPD",
     chat: "Message chat",
@@ -171,7 +171,7 @@ function AuditTable({ logs }: { logs: AuditLogItem[] }) {
                 colSpan={5}
                 className="py-4 text-center text-[var(--color-muted)]"
               >
-                Aucune entree dans le journal
+                Aucune entrée dans le journal
               </td>
             </tr>
           )}
@@ -213,6 +213,7 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    document.title = "Administration - Thérèse";
     loadData();
   }, [loadData]);
 
@@ -223,7 +224,7 @@ export default function AdminDashboard() {
         prev.map((u) => (u.id === updated.id ? updated : u))
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur de mise a jour");
+      setError(err instanceof Error ? err.message : "Erreur de mise à jour");
     }
   };
 
@@ -234,7 +235,7 @@ export default function AdminDashboard() {
         prev.map((u) => (u.id === updated.id ? updated : u))
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur de mise a jour");
+      setError(err instanceof Error ? err.message : "Erreur de mise à jour");
     }
   };
 
@@ -268,7 +269,7 @@ export default function AdminDashboard() {
 
         {/* Erreur */}
         {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm">
+          <div role="alert" className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm">
             {error}
             <button
               onClick={() => setError(null)}
@@ -324,7 +325,7 @@ export default function AdminDashboard() {
               {/* Derniers utilisateurs */}
               <div className="bg-slate-800/20 border border-slate-700 rounded-xl p-4">
                 <h3 className="text-sm font-semibold text-[var(--color-text)] mb-3">
-                  Utilisateurs recents
+                  Utilisateurs récents
                 </h3>
                 <div className="space-y-2">
                   {users.slice(0, 5).map((u) => (
@@ -357,7 +358,7 @@ export default function AdminDashboard() {
               {/* Derniers audit logs */}
               <div className="bg-slate-800/20 border border-slate-700 rounded-xl p-4">
                 <h3 className="text-sm font-semibold text-[var(--color-text)] mb-3">
-                  Activite recente
+                  Activité récente
                 </h3>
                 <div className="space-y-2">
                   {auditLogs.slice(0, 5).map((log) => (
@@ -380,7 +381,7 @@ export default function AdminDashboard() {
                   ))}
                   {auditLogs.length === 0 && (
                     <p className="text-[var(--color-muted)] text-xs">
-                      Aucune activite recente
+                      Aucune activité récente
                     </p>
                   )}
                 </div>

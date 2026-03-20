@@ -54,6 +54,9 @@ export default function CharterModal() {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="charter-title"
         className="w-full max-w-2xl mx-4 rounded-2xl border border-white/10 shadow-2xl"
         style={{ backgroundColor: "var(--color-bg)" }}
       >
@@ -64,6 +67,7 @@ export default function CharterModal() {
             style={{ color: "var(--color-cyan)" }}
           />
           <h2
+            id="charter-title"
             className="text-xl font-semibold"
             style={{ color: "var(--color-text)" }}
           >
@@ -120,7 +124,7 @@ export default function CharterModal() {
           </label>
 
           {error && (
-            <p className="text-sm text-red-400">{error}</p>
+            <p role="alert" className="text-sm text-red-400">{error}</p>
           )}
 
           <button

@@ -77,7 +77,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   acceptCharter: async () => {
     const token = get().token;
-    if (!token) throw new Error("Non authentifie");
+    if (!token) throw new Error("Non authentifié");
 
     const response = await fetch("/api/auth/charter", {
       method: "POST",

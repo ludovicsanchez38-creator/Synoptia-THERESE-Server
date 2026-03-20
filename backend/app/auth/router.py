@@ -27,6 +27,16 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from app.rate_limit import HAS_SLOWAPI, limiter
+
+import time
+from collections import defaultdict
+
+# Rate limit login: 5 tentatives par minute par IP (SEC-015)
+_login_attempts: dict[str, list[float]] = defaultdict(list)
+_LOGIN_MAX = 5
+_LOGIN_WINDOW = 60  # secondes
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -88,7 +98,21 @@ async def login(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
-    """Authentifier un utilisateur (email + mot de passe)."""
+    """Authentifier un utilisateur (email + mot de passe).
+
+    Rate limit: 5 tentatives par minute par IP.
+    """
+    # Rate limit par IP (SEC-015)
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    _login_attempts[client_ip] = [t for t in _login_attempts[client_ip] if now - t < _LOGIN_WINDOW]
+    if len(_login_attempts[client_ip]) >= _LOGIN_MAX:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Trop de tentatives de connexion. Reessayez dans quelques instants.",
+        )
+    _login_attempts[client_ip].append(now)
+
     # Parse form data (OAuth2 convention) or JSON
     content_type = request.headers.get("content-type", "")
     if "application/x-www-form-urlencoded" in content_type:

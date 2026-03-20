@@ -51,7 +51,7 @@ export default function CRMPage() {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // Form state pour nouvelle activite
+  // Form state pour nouvelle activité
   const [showActivityForm, setShowActivityForm] = useState(false);
   const [activityForm, setActivityForm] = useState({
     contact_id: "",
@@ -79,6 +79,7 @@ export default function CRMPage() {
   }, []);
 
   useEffect(() => {
+    document.title = "CRM - Thérèse";
     loadData();
   }, [loadData]);
 
@@ -150,7 +151,7 @@ export default function CRMPage() {
 
         {/* Erreur */}
         {error && (
-          <div className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm">
+          <div role="alert" className="mb-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm">
             {error}
             <button
               onClick={() => setError(null)}
@@ -440,7 +441,7 @@ export default function CRMPage() {
           </div>
         )}
 
-        {/* === TAB ACTIVITES === */}
+        {/* === TAB ACTIVITÉS === */}
         {!loading && activeTab === "activities" && (
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -455,7 +456,7 @@ export default function CRMPage() {
               </button>
             </div>
 
-            {/* Formulaire nouvelle activite */}
+            {/* Formulaire nouvelle activité */}
             {showActivityForm && (
               <form
                 onSubmit={handleCreateActivity}
@@ -541,7 +542,7 @@ export default function CRMPage() {
               </form>
             )}
 
-            {/* Timeline des activites */}
+            {/* Timeline des activités */}
             {activities.length === 0 ? (
               <div className="text-center py-12 text-[var(--color-muted)]">
                 Aucune activit&eacute; enregistr&eacute;e
