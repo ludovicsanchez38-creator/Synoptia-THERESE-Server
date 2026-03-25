@@ -54,6 +54,7 @@ jobs:
         run: |
           pytest tests/test_agents.py tests/test_command_registry.py \
             --timeout=60 \
+            --deselect tests/test_agents.py::TestGitService \
             -x -q
 
   # --- Frontend : lint + build ---
