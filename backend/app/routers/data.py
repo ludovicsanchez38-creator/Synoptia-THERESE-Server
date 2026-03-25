@@ -397,7 +397,7 @@ async def delete_all_data(
         qdrant = get_qdrant_service()
         if qdrant.client:
             qdrant.client.delete_collection(settings.qdrant_collection)
-    except Exception:
+    except (RuntimeError, OSError):
         logger.warning("Impossible de purger la collection Qdrant")
 
     logger.warning("Toutes les donnees utilisateur ont ete supprimees (RGPD)")
@@ -603,7 +603,7 @@ async def list_backups(current_user: CurrentUser):
                 metadata["exists"] = False
 
             backups.append(metadata)
-        except Exception:
+        except (OSError, ValueError, KeyError):
             continue
 
     # Sort by date, most recent first
@@ -661,7 +661,7 @@ async def restore_backup(
     # Restore from backup
     try:
         shutil.copy2(backup_db, settings.db_path)
-    except Exception as e:
+    except OSError as e:
         # Rollback
         shutil.copy2(current_backup_path, settings.db_path)
         raise HTTPException(
@@ -845,7 +845,7 @@ async def get_backup_status(current_user: CurrentUser):
             if latest_time is None or created > latest_time:
                 latest_time = created
                 latest = metadata
-        except Exception:
+        except (OSError, ValueError, KeyError):
             continue
 
     if not latest:

@@ -130,7 +130,7 @@ class BoardService:
             logger.info(f"Recherche web: {len(response.results)} résultats trouvés")
             return results_text
 
-        except Exception as e:
+        except OSError as e:
             logger.warning(f"Échec recherche web pour Board: {e}")
             return ""
 
@@ -183,7 +183,7 @@ class BoardService:
                 user_llm = get_llm_service()
                 if user_llm and user_llm.config.provider == LLMProvider.OLLAMA:
                     default_ollama_model = user_llm.config.model
-            except Exception:
+            except (ValueError, OSError):
                 pass
             # Fallback : utiliser le premier modèle disponible via Ollama API
             if not default_ollama_model or ":" not in default_ollama_model:
@@ -194,7 +194,7 @@ class BoardService:
                         models = resp.json().get("models", [])
                         if models:
                             default_ollama_model = models[0]["name"]
-                except Exception:
+                except (OSError, KeyError):
                     pass
 
             for role in advisors:
@@ -235,7 +235,7 @@ class BoardService:
                             provider=actual_provider,
                             content=chunk,
                         )
-                except Exception as e:
+                except (OSError, RuntimeError) as e:  # noqa: BLE001 - advisor-level resilience
                     logger.error(f"Sovereign advisor {config['name']} error: {e}")
                     full_content = f"Erreur : {str(e)}"
                     yield BoardDeliberationChunk(
@@ -315,7 +315,7 @@ class BoardService:
                             provider=actual_provider,
                             content=chunk,
                         ))
-                except Exception as e:
+                except (OSError, RuntimeError) as e:  # noqa: BLE001 - advisor-level resilience
                     logger.error(f"Error getting opinion from {config['name']}: {e}")
                     full_content = f"Désolé, une erreur s'est produite: {str(e)}"
                     await chunk_queue.put(BoardDeliberationChunk(
@@ -392,11 +392,11 @@ class BoardService:
                 self._session.add(db_decision)
                 await self._session.commit()
                 logger.info(f"Board decision saved: {decision_id}")
-            except Exception as e:
+            except (OSError, ValueError) as e:  # noqa: BLE001 - persistence best-effort
                 logger.error(f"Failed to save board decision: {e}", exc_info=True)
                 try:
                     await self._session.rollback()
-                except Exception:
+                except OSError:
                     pass
         else:
             logger.warning("No session provided, decision not persisted")
@@ -476,7 +476,7 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après."""
 
             data = json.loads(cleaned)
             return BoardSynthesis(**data)
-        except (json.JSONDecodeError, Exception) as e:
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
             logger.error(f"Failed to parse synthesis JSON: {e}")
             logger.error(f"Raw response: {full_response}")
             # Return fallback synthesis

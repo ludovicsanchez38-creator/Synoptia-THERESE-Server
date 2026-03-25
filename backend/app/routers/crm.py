@@ -400,7 +400,7 @@ async def create_crm_contact(
         else:
             logger.debug("CRM sync not configured, contact created locally only")
 
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         # Ne pas bloquer la creation si le push GSheets echoue
         logger.warning(f"Failed to push contact to Google Sheets: {e}")
 
@@ -961,12 +961,12 @@ async def initiate_sheets_oauth(
                 if cid:
                     try:
                         cid = decrypt_value(cid)
-                    except Exception:
+                    except (ValueError, OSError):
                         pass  # May not be encrypted
                 if csecret:
                     try:
                         csecret = decrypt_value(csecret)
-                    except Exception:
+                    except (ValueError, OSError):
                         pass
 
                 if cid and csecret:
@@ -974,7 +974,7 @@ async def initiate_sheets_oauth(
                     client_secret = csecret
                     logger.info("Using Google credentials from MCP server")
                     break
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.warning(f"Could not get credentials from MCP: {e}")
 
     # Fallback to preferences
@@ -994,7 +994,7 @@ async def initiate_sheets_oauth(
                 client_id = decrypt_value(client_id_pref.value)
                 client_secret = decrypt_value(client_secret_pref.value)
                 logger.info("Using Google credentials from preferences")
-            except Exception:
+            except (ValueError, OSError):
                 pass
 
     # Fallback 3: réutiliser les credentials d'un EmailAccount Google existant
@@ -1013,7 +1013,7 @@ async def initiate_sheets_oauth(
                 client_id = decrypt_value(email_account.client_id)
                 client_secret = decrypt_value(email_account.client_secret)
                 logger.info("Using Google credentials from EmailAccount")
-        except Exception as e:
+        except (ValueError, OSError) as e:
             logger.warning(f"Could not get credentials from EmailAccount: {e}")
 
     if not client_id or not client_secret:
@@ -1133,7 +1133,7 @@ async def sync_crm(
             try:
                 api_key = decrypt_value(gemini_pref.value)
                 logger.info("Using Gemini API key for CRM sync")
-            except Exception:
+            except (ValueError, OSError):
                 logger.warning("Échec déchiffrement clé Gemini pour CRM sync")
                 api_key = None
 
@@ -1168,11 +1168,11 @@ async def sync_crm(
                         stats["contacts_updated"] += 1
                 except ValueError:
                     continue  # ID manquant, on saute
-                except Exception as e:
+                except (OSError, RuntimeError) as e:
                     logger.error(f"Error syncing contact {row.get('ID', 'unknown')}: {e}")
                     stats["errors"].append(f"Contact {row.get('ID', 'unknown')}: {str(e)}")
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError) as e:
             logger.error(f"Error syncing clients: {e}")
             stats["errors"].append(f"Clients: {str(e)}")
 
@@ -1191,11 +1191,11 @@ async def sync_crm(
                         stats["projects_updated"] += 1
                 except ValueError:
                     continue
-                except Exception as e:
+                except (OSError, RuntimeError) as e:
                     logger.error(f"Error syncing project {row.get('ID', 'unknown')}: {e}")
                     stats["errors"].append(f"Project {row.get('ID', 'unknown')}: {str(e)}")
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError) as e:
             logger.error(f"Error syncing projects: {e}")
             stats["errors"].append(f"Projects: {str(e)}")
 
@@ -1214,11 +1214,11 @@ async def sync_crm(
                         stats["tasks_updated"] += 1
                 except ValueError:
                     continue
-                except Exception as e:
+                except (OSError, RuntimeError) as e:
                     logger.error(f"Error syncing task {row.get('ID', 'unknown')}: {e}")
                     stats["errors"].append(f"Task {row.get('ID', 'unknown')}: {str(e)}")
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError) as e:
             logger.error(f"Error syncing tasks: {e}")
             stats["errors"].append(f"Tasks: {str(e)}")
 
@@ -1238,7 +1238,7 @@ async def sync_crm(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"CRM sync failed: {e}")
         raise HTTPException(
             status_code=500,
@@ -1283,7 +1283,7 @@ async def import_crm_data(
                     stats["contacts_updated"] += 1
             except ValueError:
                 continue
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 logger.error(f"Error importing contact {raw_row.get('ID', 'unknown')}: {e}")
                 stats["errors"].append(f"Contact {raw_row.get('ID', 'unknown')}: {str(e)}")
 
@@ -1300,7 +1300,7 @@ async def import_crm_data(
                     stats["projects_updated"] += 1
             except ValueError:
                 continue
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 logger.error(f"Error importing project {raw_row.get('ID', 'unknown')}: {e}")
                 stats["errors"].append(f"Project {raw_row.get('ID', 'unknown')}: {str(e)}")
 
@@ -1317,7 +1317,7 @@ async def import_crm_data(
                     stats["deliverables_updated"] += 1
             except ValueError:
                 continue
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 logger.error(f"Error importing deliverable {raw_row.get('ID', 'unknown')}: {e}")
                 stats["errors"].append(f"Deliverable {raw_row.get('ID', 'unknown')}: {str(e)}")
 
@@ -1334,7 +1334,7 @@ async def import_crm_data(
                     stats["tasks_updated"] += 1
             except ValueError:
                 continue
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 logger.error(f"Error importing task {raw_row.get('ID', 'unknown')}: {e}")
                 stats["errors"].append(f"Task {raw_row.get('ID', 'unknown')}: {str(e)}")
 

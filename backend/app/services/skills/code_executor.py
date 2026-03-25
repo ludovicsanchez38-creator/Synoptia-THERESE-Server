@@ -220,7 +220,7 @@ def _validate_document_content(output_path: str, format_type: str) -> bool:
             )
             return row_count >= min_elements
 
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.warning("Erreur validation contenu %s : %s", format_type, e)
 
     return True  # En cas d'erreur de lecture, on accepte le fichier
@@ -718,7 +718,7 @@ async def execute_sandboxed(
         )
     except CodeExecutionError:
         raise
-    except Exception as e:
+    except (RuntimeError, OSError, ValueError, TypeError) as e:
         raise CodeExecutionError(
             f"Erreur inattendue : {type(e).__name__}: {e}"
         ) from e
@@ -839,7 +839,7 @@ class CodeGenSkill(BaseSkill):
                     f"[{self.skill_id}] Échec code-execution : {e}, "
                     f"fallback vers parser legacy"
                 )
-            except Exception as e:
+            except (RuntimeError, OSError, ValueError, TypeError) as e:
                 logger.warning(
                     f"[{self.skill_id}] Erreur inattendue code-execution : {e}, "
                     f"fallback vers parser legacy"

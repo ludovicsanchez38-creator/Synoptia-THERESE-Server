@@ -189,7 +189,7 @@ class MCPService:
                 self.servers[server.id] = server
                 logger.info(f"Loaded MCP server config: {server.name}")
 
-        except Exception as e:
+        except (json.JSONDecodeError, OSError) as e:
             logger.error(f"Failed to load MCP config: {e}")
 
     async def _save_config(self):
@@ -344,7 +344,7 @@ class MCPService:
                 if is_value_encrypted(value):
                     try:
                         decrypted_env[key] = decrypt_value(value)
-                    except Exception as e:
+                    except (ValueError, OSError) as e:
                         logger.error(f"Failed to decrypt env var {key}: {e}")
                         decrypted_env[key] = value
                 else:
@@ -386,7 +386,7 @@ class MCPService:
             server.error = f"Command not found: {server.command}"
             logger.error(f"Failed to start {server.name}: {server.error}")
             return False
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             server.status = MCPServerStatus.ERROR
             server.error = str(e)
             logger.error(f"Failed to start {server.name}: {e}")
@@ -452,7 +452,7 @@ class MCPService:
 
         except asyncio.CancelledError:
             pass
-        except Exception as e:
+        except OSError as e:
             logger.error(f"Error reading from {server_id}: {e}")
             if server_id in self.servers:
                 self.servers[server_id].status = MCPServerStatus.ERROR
@@ -490,7 +490,7 @@ class MCPService:
 
         except asyncio.CancelledError:
             pass
-        except Exception as e:
+        except OSError as e:
             logger.warning(f"Error reading stderr from {server_id}: {e}")
 
     async def _cleanup_pending_requests(self):
@@ -529,7 +529,7 @@ class MCPService:
 
         except asyncio.CancelledError:
             pass
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.error(f"Error in pending requests cleanup: {e}")
 
     async def _handle_server_message(self, server_id: str, message: dict):
@@ -607,7 +607,7 @@ class MCPService:
             # Send initialized notification
             await self._send_notification(server_id, "notifications/initialized", {})
 
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.error(f"Failed to initialize {server_id}: {e}")
             raise
 
@@ -649,7 +649,7 @@ class MCPService:
             ]
             logger.info(f"Server {server.name} has {len(server.tools)} tools")
 
-        except Exception as e:
+        except (RuntimeError, OSError, KeyError) as e:
             logger.error(f"Failed to list tools for {server_id}: {e}")
 
     async def call_tool(
@@ -694,7 +694,7 @@ class MCPService:
                 execution_time_ms=execution_time,
             )
 
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError, KeyError) as e:
             execution_time = (time.time() - start_time) * 1000
             logger.error(f"Tool call failed: {tool_name} on {server_id}: {e}")
             return ToolCallResult(

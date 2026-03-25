@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
 
             await init_qdrant()
             logger.info("Qdrant initialisé")
-        except Exception as e:
+        except (RuntimeError, OSError, ImportError) as e:
             logger.warning("Qdrant non disponible (mode dégradé) : %s", e)
 
     yield
@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
             from app.services import close_qdrant
 
             await close_qdrant()
-        except Exception:
+        except (RuntimeError, OSError):
             pass
 
     logger.info("Thérèse Server arrêté")
@@ -183,7 +183,7 @@ Les admins voient les utilisateurs de leur organisation.
             request.state.user_id = payload.get("sub")
             request.state.user_role = payload.get("role")
             request.state.org_id = payload.get("org_id")
-        except Exception:
+        except (ValueError, KeyError, RuntimeError):
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Token invalide ou expire"},
@@ -230,7 +230,7 @@ Les admins voient les utilisateurs de leur organisation.
                 from sqlmodel import text
 
                 await session.execute(text("SELECT 1"))
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             services["database"] = f"error: {e}"
 
         try:
@@ -240,7 +240,7 @@ Les admins voient les utilisateurs de leur organisation.
             if client:
                 await client.get_collections()
                 services["qdrant"] = "ok"
-        except Exception as e:
+        except (OSError, RuntimeError) as e:
             services["qdrant"] = f"error: {e}"
 
         return {"status": "ok", "services": services}
@@ -303,19 +303,19 @@ Les admins voient les utilisateurs de leur organisation.
     try:
         from app.routers.board import router as board_router
         app.include_router(board_router, prefix="/api/board", tags=["board"])
-    except Exception as e:
+    except (ImportError, RuntimeError) as e:
         logger.warning("Router board disabled: %s", e)
 
     try:
         from app.routers.invoices import router as invoices_router
         app.include_router(invoices_router, prefix="/api/invoices", tags=["invoices"])
-    except Exception as e:
+    except (ImportError, RuntimeError) as e:
         logger.warning("Router invoices disabled: %s", e)
 
     try:
         from app.routers.skills import router as skills_router
         app.include_router(skills_router, prefix="/api/skills", tags=["skills"])
-    except Exception as e:
+    except (ImportError, RuntimeError) as e:
         logger.warning("Router skills disabled: %s", e)
 
     # Les routers seront activés au fur et à mesure de P0-4

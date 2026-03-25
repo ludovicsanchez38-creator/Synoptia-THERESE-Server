@@ -469,7 +469,7 @@ class CRMImportService:
                 raw_data = _parse_xlsx(content)
             else:
                 raw_data = _parse_json(content)
-        except Exception as e:
+        except (ValueError, KeyError, UnicodeDecodeError, json.JSONDecodeError) as e:
             return ImportPreview(
                 total_rows=0,
                 sample_rows=[],
@@ -545,7 +545,7 @@ class CRMImportService:
                 raw_data = _parse_xlsx(content)
             else:
                 raw_data = _parse_json(content)
-        except Exception as e:
+        except (ValueError, KeyError, UnicodeDecodeError, json.JSONDecodeError) as e:
             return ImportResult(
                 success=False,
                 errors=[ImportError(row=0, column=None, message=str(e))],
@@ -627,7 +627,7 @@ class CRMImportService:
                     self.session.add(contact)
                     result.created += 1
 
-            except Exception as e:
+            except (KeyError, TypeError, ValueError) as e:  # noqa: BLE001 - row-level resilience
                 logger.error(f"Error importing contact row {idx + 1}: {e}")
                 result.errors.append(ImportError(row=idx + 1, column=None, message=str(e)))
                 result.skipped += 1
@@ -668,7 +668,7 @@ class CRMImportService:
                 raw_data = _parse_xlsx(content, sheet_name="Projets")
             else:
                 raw_data = _parse_json(content)
-        except Exception as e:
+        except (ValueError, KeyError, UnicodeDecodeError, json.JSONDecodeError) as e:
             return ImportResult(
                 success=False,
                 errors=[ImportError(row=0, column=None, message=str(e))],
@@ -764,7 +764,7 @@ class CRMImportService:
                     self.session.add(project)
                     result.created += 1
 
-            except Exception as e:
+            except (KeyError, TypeError, ValueError) as e:  # noqa: BLE001 - row-level resilience
                 logger.error(f"Error importing project row {idx + 1}: {e}")
                 result.errors.append(ImportError(row=idx + 1, column=None, message=str(e)))
                 result.skipped += 1
@@ -805,7 +805,7 @@ class CRMImportService:
                 raw_data = _parse_xlsx(content, sheet_name="Livrables")
             else:
                 raw_data = _parse_json(content)
-        except Exception as e:
+        except (ValueError, KeyError, UnicodeDecodeError, json.JSONDecodeError) as e:
             return ImportResult(
                 success=False,
                 errors=[ImportError(row=0, column=None, message=str(e))],
@@ -899,7 +899,7 @@ class CRMImportService:
                     self.session.add(deliverable)
                     result.created += 1
 
-            except Exception as e:
+            except (KeyError, TypeError, ValueError) as e:  # noqa: BLE001 - row-level resilience
                 logger.error(f"Error importing deliverable row {idx + 1}: {e}")
                 result.errors.append(ImportError(row=idx + 1, column=None, message=str(e)))
                 result.skipped += 1

@@ -193,7 +193,7 @@ async def _list_google_calendars(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to list Google calendars: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -299,7 +299,7 @@ async def create_calendar(
                 synced_at=new_cal.synced_at.isoformat() if new_cal.synced_at else None,
             )
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError) as e:
             logger.error(f"Failed to create Google calendar: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -338,7 +338,7 @@ async def delete_calendar(
 
         return {"success": True, "message": "Calendar deleted"}
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to delete calendar: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -646,7 +646,7 @@ async def _list_events_google(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to list events: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -850,7 +850,7 @@ async def _create_event_google(
             synced_at=new_event.synced_at.isoformat() if new_event.synced_at else None,
         )
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to create event: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1008,7 +1008,7 @@ async def update_event(
             synced_at=db_event.synced_at.isoformat() if db_event.synced_at else None,
         )
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to update event: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1054,7 +1054,7 @@ async def delete_event(
 
         return {"success": True, "message": "Evenement supprime"}
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to delete event: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1135,7 +1135,7 @@ async def quick_add_event(
             synced_at=new_event.synced_at.isoformat(),
         )
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to quick add event: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1182,7 +1182,7 @@ async def sync_calendar(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to sync calendar: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

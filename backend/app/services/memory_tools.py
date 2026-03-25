@@ -168,7 +168,7 @@ async def execute_create_contact(
                     "email": contact.email,
                 },
             )
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logger.warning(f"Failed to embed new contact in Qdrant: {e}")
 
         await session.commit()
@@ -181,7 +181,7 @@ async def execute_create_contact(
             "message": f"Contact '{contact.display_name}' cree avec succes.",
         }, ensure_ascii=False)
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to create contact via tool: {e}")
         await session.rollback()
         return json.dumps({
@@ -237,7 +237,7 @@ async def execute_create_project(
                     "budget": project.budget,
                 },
             )
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logger.warning(f"Failed to embed new project in Qdrant: {e}")
 
         await session.commit()
@@ -250,7 +250,7 @@ async def execute_create_project(
             "message": f"Projet '{project.name}' cree avec succes.",
         }, ensure_ascii=False)
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to create project via tool: {e}")
         await session.rollback()
         return json.dumps({

@@ -152,7 +152,7 @@ class CRMSyncService:
             clients_data = await self.sheets.get_all_data_as_dicts(spreadsheet_id, "Clients")
             logger.info(f"Found {len(clients_data)} clients in Google Sheets")
             await self._sync_contacts(clients_data, stats)
-        except Exception as e:
+        except (ValueError, OSError, KeyError) as e:  # noqa: BLE001 - Sheets API + DB
             logger.error(f"Error syncing clients: {e}")
             stats.errors.append(f"Clients: {str(e)}")
 
@@ -161,7 +161,7 @@ class CRMSyncService:
             projects_data = await self.sheets.get_all_data_as_dicts(spreadsheet_id, "Projects")
             logger.info(f"Found {len(projects_data)} projects in Google Sheets")
             await self._sync_projects(projects_data, stats)
-        except Exception as e:
+        except (ValueError, OSError, KeyError) as e:  # noqa: BLE001 - Sheets API + DB
             logger.error(f"Error syncing projects: {e}")
             stats.errors.append(f"Projects: {str(e)}")
 
@@ -170,7 +170,7 @@ class CRMSyncService:
             deliverables_data = await self.sheets.get_all_data_as_dicts(spreadsheet_id, "Deliverables")
             logger.info(f"Found {len(deliverables_data)} deliverables in Google Sheets")
             await self._sync_deliverables(deliverables_data, stats)
-        except Exception as e:
+        except (ValueError, OSError, KeyError) as e:  # noqa: BLE001 - Sheets API + DB
             logger.error(f"Error syncing deliverables: {e}")
             stats.errors.append(f"Deliverables: {str(e)}")
 
@@ -179,7 +179,7 @@ class CRMSyncService:
             tasks_data = await self.sheets.get_all_data_as_dicts(spreadsheet_id, "Tasks")
             logger.info(f"Found {len(tasks_data)} tasks in Google Sheets")
             await self._sync_tasks(tasks_data, stats)
-        except Exception as e:
+        except (ValueError, OSError, KeyError) as e:  # noqa: BLE001 - Sheets API + DB
             logger.error(f"Error syncing tasks: {e}")
             stats.errors.append(f"Tasks: {str(e)}")
 
@@ -207,7 +207,7 @@ class CRMSyncService:
                     stats.contacts_updated += 1
             except ValueError:
                 continue  # ID manquant
-            except Exception as e:
+            except (KeyError, TypeError, OSError) as e:  # noqa: BLE001 - row-level resilience
                 logger.error(f"Error syncing contact {row.get('ID', 'unknown')}: {e}")
                 stats.errors.append(f"Contact {row.get('ID', 'unknown')}: {str(e)}")
 
@@ -231,7 +231,7 @@ class CRMSyncService:
                     stats.projects_updated += 1
             except ValueError:
                 continue
-            except Exception as e:
+            except (KeyError, TypeError, OSError) as e:  # noqa: BLE001 - row-level resilience
                 logger.error(f"Error syncing project {row.get('ID', 'unknown')}: {e}")
                 stats.errors.append(f"Project {row.get('ID', 'unknown')}: {str(e)}")
 
@@ -303,7 +303,7 @@ class CRMSyncService:
                     self.session.add(deliverable)
                     stats.deliverables_created += 1
 
-            except Exception as e:
+            except (KeyError, TypeError, OSError) as e:  # noqa: BLE001 - row-level resilience
                 logger.error(f"Error syncing deliverable {row.get('ID', 'unknown')}: {e}")
                 stats.errors.append(f"Deliverable {row.get('ID', 'unknown')}: {str(e)}")
 
@@ -322,7 +322,7 @@ class CRMSyncService:
                     stats.tasks_updated += 1
             except ValueError:
                 continue
-            except Exception as e:
+            except (KeyError, TypeError, OSError) as e:  # noqa: BLE001 - row-level resilience
                 logger.error(f"Error syncing task {row.get('ID', 'unknown')}: {e}")
                 stats.errors.append(f"Task {row.get('ID', 'unknown')}: {str(e)}")
 
@@ -493,7 +493,7 @@ async def auto_create_crm_spreadsheet(
             title="THÉRÈSE CRM",
             sheets=CRM_SHEET_STRUCTURE,
         )
-    except Exception as e:
+    except (ValueError, OSError) as e:
         logger.error(f"Impossible de créer le spreadsheet CRM : {e}")
         return None
 
@@ -534,7 +534,7 @@ async def get_crm_access_token(session: AsyncSession) -> str | None:
 
     try:
         return decrypt_value(pref.value)
-    except Exception as e:
+    except (ValueError, OSError) as e:
         logger.error(f"Failed to decrypt CRM token: {e}")
         return None
 
@@ -575,7 +575,7 @@ async def ensure_valid_crm_token(session: AsyncSession) -> str | None:
 
     try:
         refresh_token = decrypt_value(refresh_pref.value)
-    except Exception:
+    except (ValueError, OSError):
         logger.error("Impossible de déchiffrer le refresh token CRM")
         return access_token
 
@@ -599,7 +599,7 @@ async def ensure_valid_crm_token(session: AsyncSession) -> str | None:
                     client_id = val
                 else:
                     client_secret = val
-            except Exception:
+            except (ValueError, OSError):
                 pass
 
     # 2. Fallback: EmailAccount Gmail credentials
@@ -618,7 +618,7 @@ async def ensure_valid_crm_token(session: AsyncSession) -> str | None:
             try:
                 client_id = decrypt_value(email_account.client_id)
                 client_secret = decrypt_value(email_account.client_secret)
-            except Exception:
+            except (ValueError, OSError):
                 pass
 
     if not client_id or not client_secret:
@@ -654,7 +654,7 @@ async def ensure_valid_crm_token(session: AsyncSession) -> str | None:
         logger.info("CRM Sheets access token rafraîchi avec succès")
         return new_access_token
 
-    except Exception as e:
+    except (ValueError, OSError, KeyError) as e:  # noqa: BLE001 - OAuth refresh best-effort
         logger.warning(f"Échec du refresh CRM token: {e} - utilisation du token actuel")
         return access_token
 

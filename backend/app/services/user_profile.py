@@ -132,14 +132,14 @@ async def get_user_profile(
                 return None
             try:
                 value = decrypt_value(value)
-            except Exception as e:
+            except (ValueError, OSError) as e:
                 logger.error(f"Failed to decrypt user profile: {e}")
                 return None
 
         data = json.loads(value)
         return UserProfile.from_dict(data)
 
-    except Exception as e:
+    except (json.JSONDecodeError, OSError, ValueError) as e:  # noqa: BLE001 - safe fallback to None
         logger.error(f"Failed to load user profile: {e}")
         return None
 
@@ -197,7 +197,7 @@ async def set_user_profile(
         logger.info(f"User profile saved: {profile.name}")
         return profile
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Failed to save user profile: {e}")
         await session.rollback()
         raise
@@ -242,7 +242,7 @@ async def _embed_profile(profile: UserProfile) -> None:
         # Supprimer l'ancien embedding si existant
         try:
             qdrant.delete_by_entity("owner_profile")
-        except Exception:
+        except (ValueError, OSError, KeyError):
             pass  # Pas grave si rien à supprimer
 
         qdrant.add_memory(
@@ -260,7 +260,7 @@ async def _embed_profile(profile: UserProfile) -> None:
 
         logger.debug("User profile embedded in Qdrant")
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.warning(f"Failed to embed profile in Qdrant: {e}")
         # Non-critical error, don't raise
 
@@ -291,13 +291,13 @@ async def delete_user_profile(session: AsyncSession) -> bool:
         try:
             qdrant = get_qdrant_service()
             qdrant.delete_by_entity("owner_profile")
-        except Exception:
+        except (ValueError, OSError, KeyError):
             pass  # Non-critical
 
         logger.info("User profile deleted")
         return True
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.error(f"Failed to delete user profile: {e}")
         await session.rollback()
         raise

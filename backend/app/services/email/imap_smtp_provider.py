@@ -339,7 +339,7 @@ class ImapSmtpProvider(EmailProvider):
                             path=folder_info.name,
                             delimiter=folder_info.delim,
                         ))
-                    except Exception:
+                    except (OSError, ValueError, KeyError):
                         # Folder exists but can't be selected (e.g., parent folder)
                         folders.append(EmailFolderDTO(
                             id=folder_info.name,
@@ -439,7 +439,7 @@ class ImapSmtpProvider(EmailProvider):
                     self._email, self._password
                 ):
                     return {"ok": True, "message": "IMAP OK"}
-            except Exception as e:
+            except (OSError, ValueError, RuntimeError) as e:
                 logger.error(f"IMAP connection test failed: {e}")
                 return {"ok": False, "message": f"IMAP : {e}"}
 
@@ -467,7 +467,7 @@ class ImapSmtpProvider(EmailProvider):
             smtp_result = {"ok": True, "message": "SMTP OK"}
         except asyncio.TimeoutError:
             smtp_result = {"ok": False, "message": "SMTP : délai de connexion dépassé (15s)"}
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"SMTP connection test failed: {e}")
             smtp_result = {"ok": False, "message": f"SMTP : {e}"}
 

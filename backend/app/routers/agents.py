@@ -60,7 +60,7 @@ def _get_source_path() -> str | None:
                 p = Path(row[0])
                 if p.exists() and (p / ".git").exists():
                     return str(p)
-    except Exception:
+    except (OSError, ValueError, ImportError):
         pass
 
     # 2. Variable d'environnement explicite
@@ -166,7 +166,7 @@ async def agent_request(
                 data = chunk.model_dump(exclude_none=True)
                 yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logger.error(f"Erreur swarm: {e}", exc_info=True)
             error_chunk = AgentStreamChunk(
                 type="error",
@@ -191,7 +191,7 @@ async def agent_request(
                     db_task.diff_summary = diff_summary
                     db_task.updated_at = datetime.now(UTC)
                     await update_session.commit()
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Erreur mise à jour tâche: {e}")
 
     return StreamingResponse(
@@ -517,13 +517,13 @@ async def get_status(
         from app.services.agents.config import load_agent_config
         load_agent_config("katia")
         katia_ready = True
-    except Exception:
+    except (ImportError, ValueError, OSError):
         pass
     try:
         from app.services.agents.config import load_agent_config
         load_agent_config("zezette")
         zezette_ready = True
-    except Exception:
+    except (ImportError, ValueError, OSError):
         pass
 
     return AgentStatusResponse(

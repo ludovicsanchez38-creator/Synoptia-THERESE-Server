@@ -71,7 +71,7 @@ async def load_api_key_cache() -> None:
                     if encryption.is_encrypted(value):
                         try:
                             value = encryption.decrypt(value)
-                        except Exception:
+                        except (ValueError, OSError):
                             logger.warning(f"Decryption failed for {pref_key}, skipping")
                             continue
                     _api_key_cache[pref_key] = value
@@ -79,7 +79,7 @@ async def load_api_key_cache() -> None:
         _api_key_cache_loaded = True
         logger.info(f"API key cache loaded: {len(_api_key_cache)} key(s)")
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.warning(f"Could not load API key cache: {e}")
 
 
@@ -117,7 +117,7 @@ def _get_api_key_from_db(provider: str) -> str | None:
                     if encryption.is_encrypted(value):
                         try:
                             value = encryption.decrypt(value)
-                        except Exception as dec_err:
+                        except (ValueError, OSError) as dec_err:
                             logger.error(f"Failed to decrypt {provider} API key: {dec_err}")
                             return None
                     return value
@@ -132,7 +132,7 @@ def _get_api_key_from_db(provider: str) -> str | None:
             return _sync_read_key()
         except RuntimeError:
             return _sync_read_key()
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.debug(f"Could not load {provider} API key: {e}")
 
     return None
@@ -166,7 +166,7 @@ def load_therese_md() -> str | None:
                 _therese_md_loaded = True
                 logger.info(f"Loaded THERESE.md from {path}")
                 return content
-            except Exception as e:
+            except OSError as e:
                 logger.warning(f"Failed to read THERESE.md: {e}")
 
     _therese_md_loaded = True
@@ -308,7 +308,7 @@ AUTORISÉ : les listes à puces (- point clé : valeur).
                             selected_provider = row[0]
                         else:
                             selected_model = row[0]
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.warning(f"Could not read LLM preferences from DB: {e}")
 
         logger.info(f"LLM preferences from DB: provider={selected_provider}, model={selected_model}")
@@ -608,7 +608,7 @@ def get_llm_service_for_provider(provider_name: str, model_override: str | None 
                 row = result.fetchone()
                 if row and row[0]:
                     user_model = row[0]
-    except Exception:
+    except (OSError, ValueError):
         pass
     model = model_override or user_model or default_model
 

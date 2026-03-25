@@ -136,9 +136,9 @@ class CalDAVProvider(CalendarProvider):
             try:
                 cal = principal.make_calendar(name=name)
                 return self._caldav_cal_to_dto(cal)
-            except Exception as e:
+            except (OSError, ValueError, RuntimeError) as e:
                 logger.error(f"Failed to create CalDAV calendar: {e}")
-                raise ValueError(f"Calendar creation not supported or failed: {e}")
+                raise ValueError(f"Calendar creation not supported or failed: {e}") from e
 
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _sync_create)
@@ -219,7 +219,7 @@ class CalDAVProvider(CalendarProvider):
                 try:
                     dto = self._caldav_event_to_dto(event, calendar_id)
                     result.append(dto)
-                except Exception as e:
+                except (ValueError, KeyError, AttributeError) as e:
                     logger.warning(f"Failed to parse CalDAV event: {e}")
 
             return result, None  # CalDAV doesn't have pagination tokens
@@ -249,7 +249,7 @@ class CalDAVProvider(CalendarProvider):
             try:
                 event = cal.event_by_uid(event_id)
                 return self._caldav_event_to_dto(event, calendar_id)
-            except Exception:
+            except (ValueError, KeyError, AttributeError):
                 pass
 
             # Search all events
@@ -356,7 +356,7 @@ class CalDAVProvider(CalendarProvider):
             event = None
             try:
                 event = cal.event_by_uid(event_id)
-            except Exception:
+            except (ValueError, KeyError, AttributeError):
                 for e in cal.events():
                     if self._get_event_uid(e) == event_id:
                         event = e
@@ -437,7 +437,7 @@ class CalDAVProvider(CalendarProvider):
                 event = cal.event_by_uid(event_id)
                 event.delete()
                 return
-            except Exception:
+            except (ValueError, KeyError, AttributeError):
                 pass
 
             for event in cal.events():
@@ -546,6 +546,6 @@ class CalDAVProvider(CalendarProvider):
             for component in ical.walk():
                 if component.name == "VEVENT":
                     return str(component.get("uid", ""))
-        except Exception:
+        except (ValueError, KeyError, AttributeError):
             pass
         return ""

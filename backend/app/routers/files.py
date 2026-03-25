@@ -125,7 +125,7 @@ def _extract_text_simple(file_path: Path) -> str | None:
         return extract_text(file_path)
     except ImportError:
         pass
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         logger.warning("Erreur extraction texte %s : %s", file_path, e)
 
     # Fallback
@@ -307,7 +307,7 @@ async def delete_file(
         if status["ready"]:
             await asyncio.to_thread(rag.delete_file_chunks, file_id)
             qdrant_cleaned = True
-    except Exception as e:
+    except (RuntimeError, OSError) as e:
         logger.warning("Impossible de supprimer les chunks Qdrant : %s", e)
 
     # Supprimer le fichier physique
@@ -411,7 +411,7 @@ async def index_file(
     if file_meta.chunk_count > 0:
         try:
             await asyncio.to_thread(rag.delete_file_chunks, file_id)
-        except Exception as e:
+        except (RuntimeError, OSError) as e:
             logger.warning("Erreur suppression anciens chunks : %s", e)
 
     # Indexer dans Qdrant
@@ -426,7 +426,7 @@ async def index_file(
         )
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
-    except Exception as e:
+    except (ValueError, OSError) as e:
         logger.error("Erreur indexation fichier %s : %s", file_id, e)
         raise HTTPException(
             status_code=500,
@@ -502,7 +502,7 @@ async def search_files(
         )
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
-    except Exception as e:
+    except (ValueError, OSError) as e:
         logger.error("Erreur recherche RAG : %s", e)
         raise HTTPException(
             status_code=500,

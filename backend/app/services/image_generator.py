@@ -41,11 +41,11 @@ def _get_api_key_from_db(provider: str) -> str | None:
                 if encryption.is_encrypted(value):
                     try:
                         value = encryption.decrypt(value)
-                    except Exception as dec_err:
+                    except (ValueError, OSError) as dec_err:
                         logger.error(f"Failed to decrypt {provider} API key: {dec_err}")
                         return None
                 return value
-    except Exception as e:
+    except (OSError, ValueError, KeyError) as e:
         logger.debug(f"Could not load {provider} API key from DB: {e}")
 
     return None
@@ -192,7 +192,7 @@ class ImageGeneratorService:
                 extension="png",
             )
 
-        except Exception as e:
+        except (ValueError, OSError, KeyError) as e:
             logger.error(f"OpenAI image generation error: {e}")
             raise
 
@@ -268,7 +268,7 @@ class ImageGeneratorService:
                 extension="png",
             )
 
-        except Exception as e:
+        except (ValueError, OSError, KeyError) as e:
             logger.error(f"Gemini image generation error: {e}")
             raise
 
@@ -340,7 +340,7 @@ class ImageGeneratorService:
                 extension="png",
             )
 
-        except Exception as e:
+        except (ValueError, OSError, KeyError) as e:
             logger.error(f"Fal image generation error: {e}")
             raise
 
