@@ -1,7 +1,8 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./stores/authStore";
 import CharterModal from "./components/CharterModal";
+import SearchModal from "./components/SearchModal";
 import Spinner from "./components/ui/Spinner";
 
 // Lazy-loaded pages (code splitting)
@@ -27,10 +28,27 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { user, isLoading, checkAuth } = useAuthStore();
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Ctrl+K / Cmd+K pour ouvrir la recherche
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        if (user) setSearchOpen((open) => !open);
+      }
+    },
+    [user]
+  );
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
 
   if (isLoading) {
     return (
@@ -51,6 +69,8 @@ export default function App() {
   }
 
   return (
+    <>
+    {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-center"><Spinner size="lg" /><p className="mt-4 text-sm text-[var(--color-muted)]">Chargement...</p></div></div>}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
@@ -90,5 +110,6 @@ export default function App() {
       <Route path="*" element={<Navigate to="/chat" replace />} />
     </Routes>
     </Suspense>
+    </>
   );
 }
