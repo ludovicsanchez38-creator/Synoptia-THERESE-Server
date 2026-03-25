@@ -110,7 +110,7 @@ class AgentRuntime:
                 return f"Outil inconnu : {name}"
         except PermissionError as e:
             return f"Permission refusée : {e}"
-        except Exception as e:
+        except (ValueError, RuntimeError, OSError, KeyError, TypeError) as e:
             logger.error(f"Erreur outil {name}: {e}", exc_info=True)
             return f"Erreur : {e}"
 
@@ -185,7 +185,7 @@ class AgentRuntime:
                         full_content += chunk
                         yield AgentEvent(type="chunk", content=chunk)
 
-            except Exception as e:
+            except (ValueError, RuntimeError, ConnectionError, OSError) as e:
                 logger.error(f"Agent {self.config.id} erreur LLM: {e}", exc_info=True)
                 yield AgentEvent(type="error", content=f"Erreur LLM : {e}")
                 return

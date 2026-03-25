@@ -547,7 +547,7 @@ async def install_preset(preset_id: str, env: dict[str, str] | None = None) -> M
         except RuntimeError:
             # No running loop, create one
             working_directory = asyncio.run(_get_working_dir())
-    except Exception as e:
+    except (ImportError, ValueError, RuntimeError, OSError) as e:
         logger.warning(f"Could not resolve working directory from DB: {e}. Using fallback: {working_directory}")
 
     args = [

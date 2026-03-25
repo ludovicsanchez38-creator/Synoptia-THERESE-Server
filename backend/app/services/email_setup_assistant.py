@@ -99,7 +99,7 @@ class EmailSetupAssistant:
                             source='mcp'
                         )
                         break
-        except Exception as e:
+        except (ImportError, ValueError, RuntimeError, AttributeError) as e:
             # MCP service not available or no Google server configured
             logger.debug("MCP Google credentials not available: %s", e)
 

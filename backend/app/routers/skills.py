@@ -217,7 +217,7 @@ IMPORTANT : Écris directement le contenu textuel complet et détaillé. NE gén
 
         return result
 
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
         logger.exception(f"Error executing skill {skill_id}")
         raise HTTPException(
             status_code=500,

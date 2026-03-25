@@ -154,7 +154,7 @@ class EntityExtractor:
             logger.info(f"Extracted {len(result.contacts)} contacts, {len(result.projects)} projects")
             return result
 
-        except Exception as e:
+        except (ValueError, KeyError, RuntimeError, ConnectionError) as e:
             logger.warning(f"Entity extraction failed: {e}")
             return ExtractionResult(contacts=[], projects=[])
 

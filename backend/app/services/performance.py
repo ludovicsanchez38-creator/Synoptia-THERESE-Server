@@ -271,7 +271,7 @@ class MemoryManager:
                 else:
                     result = callback()
                 results[name] = result
-            except Exception as e:
+            except (ValueError, RuntimeError, OSError, TypeError) as e:
                 logger.error(f"Cleanup callback failed: {e}")
                 results[callback.__name__] = {"error": str(e)}
 

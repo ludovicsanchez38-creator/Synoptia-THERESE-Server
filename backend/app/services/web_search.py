@@ -110,7 +110,7 @@ class BraveSearchService:
         except httpx.HTTPStatusError as e:
             logger.error(f"Brave Search error: {e.response.status_code}")
             return SearchResponse(query=query, results=[], total_results=0)
-        except Exception as e:
+        except (httpx.HTTPError, ConnectionError, ValueError) as e:
             logger.error(f"Brave Search error: {e}")
             return SearchResponse(query=query, results=[], total_results=0)
 
@@ -203,7 +203,7 @@ class WebSearchService:
         except httpx.HTTPStatusError as e:
             logger.error(f"DuckDuckGo search error: {e.response.status_code}")
             return SearchResponse(query=query, results=[], total_results=0)
-        except Exception as e:
+        except (httpx.HTTPError, ConnectionError, ValueError) as e:
             logger.error(f"Web search error: {e}")
             return SearchResponse(query=query, results=[], total_results=0)
 
@@ -325,7 +325,7 @@ class SearXNGService:
                 total_results=data.get("number_of_results", len(results)),
             )
 
-        except Exception as e:
+        except (httpx.HTTPError, ConnectionError, ValueError) as e:
             logger.error(f"SearXNG search error: {e}")
             return SearchResponse(query=query, results=[], total_results=0)
 

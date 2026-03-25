@@ -103,7 +103,7 @@ async def deliberate(
                 async for chunk in board_service.deliberate(request):
                     data = chunk.model_dump()
                     yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
-            except Exception as e:
+            except (ValueError, KeyError, RuntimeError) as e:
                 logger.exception("Board deliberation error")
                 error_data = {"type": "error", "content": str(e)}
                 yield f"data: {json.dumps(error_data)}\n\n"

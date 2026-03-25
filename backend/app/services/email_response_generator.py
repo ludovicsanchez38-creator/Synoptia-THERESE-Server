@@ -113,7 +113,7 @@ Rédige une réponse appropriée en français."""
 
             return response_text
 
-        except Exception as e:
+        except (ValueError, RuntimeError, ConnectionError, OSError) as e:
             # Fallback si erreur LLM
             logger.warning("LLM email response generation failed: %s", e)
             return f"""Bonjour {from_name},

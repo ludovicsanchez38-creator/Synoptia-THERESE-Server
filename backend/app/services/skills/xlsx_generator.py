@@ -332,7 +332,7 @@ NE génère PAS de code Python. Écris directement les tableaux de données.
                 cell.value = formula
                 cell.font = formula_font
                 cell.alignment = Alignment(horizontal='right', vertical='center')
-            except Exception as e:
+            except (TypeError, AttributeError, KeyError, ValueError) as e:
                 logger.warning(f"Could not add formula to {cell_ref}: {e}")
 
         # Footer Synoptia

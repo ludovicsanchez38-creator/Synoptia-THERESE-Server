@@ -128,7 +128,7 @@ class InfomaniakProvider(BaseProvider):
         except httpx.HTTPStatusError as e:
             logger.error(f"Infomaniak API error: {e.response.status_code}")
             yield StreamEvent(type="error", content=f"API error: {e.response.status_code}")
-        except Exception as e:
+        except (httpx.HTTPError, ConnectionError, ValueError) as e:
             logger.error(f"Infomaniak streaming error: {e}")
             yield StreamEvent(type="error", content=str(e))
 

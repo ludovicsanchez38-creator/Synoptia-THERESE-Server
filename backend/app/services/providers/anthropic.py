@@ -148,7 +148,7 @@ class AnthropicProvider(BaseProvider):
                 error_text = str(e)
             logger.error(f"Anthropic API error: {e.response.status_code} - {error_text}")
             yield StreamEvent(type="error", content=f"API error: {e.response.status_code}")
-        except Exception as e:
+        except (httpx.HTTPError, ConnectionError, ValueError) as e:
             logger.error(f"Anthropic streaming error: {e}")
             yield StreamEvent(type="error", content=str(e))
 

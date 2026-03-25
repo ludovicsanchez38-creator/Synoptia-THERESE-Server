@@ -176,7 +176,7 @@ async def test_caldav_connection(
                 for cal in calendars
             ],
         }
-    except Exception as e:
+    except (ConnectionError, ValueError, OSError, TimeoutError) as e:
         logger.error(f"CalDAV connection test failed: {e}")
         return {
             "success": False,

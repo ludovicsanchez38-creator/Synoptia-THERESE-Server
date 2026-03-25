@@ -14,6 +14,8 @@ import logging
 from dataclasses import dataclass, field
 from typing import AsyncGenerator
 
+import httpx
+
 from app.services.web_search import SearchResponse, get_web_search_service
 
 logger = logging.getLogger(__name__)
@@ -185,7 +187,7 @@ async def deep_research(
     try:
         queries = await decompose_question(question, llm_service)
         queries = queries[:max_queries]
-    except Exception as e:
+    except (httpx.HTTPError, ConnectionError, ValueError) as e:
         logger.error(f"Erreur décomposition : {e}")
         queries = [question]
 
@@ -221,7 +223,7 @@ async def deep_research(
                         snippet=result.snippet,
                         query=query,
                     ))
-        except Exception as e:
+        except (httpx.HTTPError, ConnectionError, ValueError) as e:
             logger.error(f"Erreur recherche '{query}': {e}")
 
         yield ResearchProgress(

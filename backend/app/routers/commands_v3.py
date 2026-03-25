@@ -178,6 +178,6 @@ async def generate_template(request: GenerateTemplateRequest, current_user: Curr
             "category": template.get("category", "production"),
             "prompt_template": template.get("prompt_template", ""),
         }
-    except Exception as e:
+    except (ValueError, RuntimeError, json.JSONDecodeError) as e:
         logger.error(f"Erreur génération template : {e}")
         raise HTTPException(status_code=500, detail=f"Erreur lors de la génération du template : {e}")

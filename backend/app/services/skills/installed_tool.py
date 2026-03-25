@@ -165,7 +165,7 @@ params = json.loads({params_json!r})
                 raise RuntimeError(
                     f"L'outil {self.skill_id} n'a pas généré de fichier"
                 )
-        except Exception as e:
+        except (RuntimeError, ValueError, OSError, TypeError) as e:
             logger.error(f"[{self.skill_id}] Erreur exécution : {e}")
             raise
 

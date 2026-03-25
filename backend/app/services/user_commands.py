@@ -129,7 +129,7 @@ class UserCommandsService:
                 text = filepath.read_text(encoding="utf-8")
                 cmd = UserCommand.from_markdown(text, filepath.name)
                 commands.append(cmd)
-            except Exception as e:
+            except (ValueError, OSError, yaml.YAMLError) as e:
                 logger.warning(f"Failed to parse command file {filepath}: {e}")
 
         return commands

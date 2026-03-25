@@ -101,7 +101,7 @@ def extract_text(file_path: Path) -> str | None:
         logger.warning(f"Unsupported file type: {ext}")
         return None
 
-    except Exception as e:
+    except (ValueError, OSError, KeyError) as e:
         logger.error(f"Error extracting text from {file_path}: {e}")
         return None
 
@@ -164,7 +164,7 @@ def _extract_pdf(file_path: Path) -> str:
             text = reader.pages[i].extract_text()
             if text:
                 text_parts.append(f"--- Page {i + 1} ---\n{text}")
-        except Exception as e:
+        except (ValueError, OSError, KeyError) as e:
             logger.warning(f"Error extracting page {i + 1}: {e}")
 
     result = "\n\n".join(text_parts)

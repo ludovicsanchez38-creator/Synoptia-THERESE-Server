@@ -59,7 +59,7 @@ class SkillsRegistry:
                     self._skills[skill.skill_id] = skill
                     logger.info(f"Outil installé découvert : {skill.skill_id} ({skill.name})")
                     count += 1
-                except Exception as e:
+                except (ImportError, ValueError, OSError, KeyError) as e:
                     logger.warning(f"Erreur chargement outil {tool_dir.name} : {e}")
 
         if count > 0:
@@ -166,7 +166,7 @@ class SkillsRegistry:
                 preview=llm_content[:500] + "..." if len(llm_content) > 500 else llm_content,
             )
 
-        except Exception as e:
+        except (ValueError, RuntimeError, OSError, KeyError) as e:
             logger.exception(f"Error executing skill {skill_id}")
             return SkillExecuteResponse(
                 success=False,

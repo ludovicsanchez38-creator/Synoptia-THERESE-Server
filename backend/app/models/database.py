@@ -116,7 +116,7 @@ async def init_db() -> None:
         for stmt in index_statements:
             try:
                 conn.execute(sqlalchemy_text(stmt))
-            except Exception as e:
+            except (OSError, RuntimeError) as e:
                 logger.debug("Index creation skipped: %s", e)
         conn.commit()
 

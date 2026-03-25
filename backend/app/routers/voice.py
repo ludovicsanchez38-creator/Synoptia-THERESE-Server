@@ -41,7 +41,7 @@ async def _get_groq_api_key(session: AsyncSession) -> str | None:
         if is_value_encrypted(pref.value):
             try:
                 return decrypt_value(pref.value)
-            except Exception as e:
+            except (ValueError, TypeError, OSError) as e:
                 logger.warning("Échec déchiffrement clé Groq: %s", e)
                 return None
         return pref.value

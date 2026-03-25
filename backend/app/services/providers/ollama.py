@@ -152,7 +152,7 @@ class OllamaProvider(BaseProvider):
                     type="error",
                     content=f"Erreur Ollama (HTTP {status}): {detail}",
                 )
-        except Exception as e:
+        except (httpx.HTTPError, ConnectionError, ValueError) as e:
             error_msg = str(e)
             logger.error(f"Ollama streaming error: {error_msg}")
             yield StreamEvent(

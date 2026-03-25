@@ -127,7 +127,7 @@ class GeminiProvider(BaseProvider):
             error_body = e.response.text if hasattr(e.response, 'text') else str(e)
             logger.error(f"Gemini API error: {e.response.status_code} - {error_body}")
             yield StreamEvent(type="error", content=f"API error: {e.response.status_code}")
-        except Exception as e:
+        except (httpx.HTTPError, ConnectionError, ValueError) as e:
             logger.error(f"Gemini streaming error: {e}")
             yield StreamEvent(type="error", content=str(e))
 

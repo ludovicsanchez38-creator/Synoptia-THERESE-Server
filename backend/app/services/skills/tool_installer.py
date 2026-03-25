@@ -139,7 +139,7 @@ params = json.loads({params_json!r})
                 error=f"Échec sandbox : {e}",
                 attempts=1,
             )
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError, TypeError) as e:
             return ToolInstallResult(
                 success=False,
                 error=f"Erreur inattendue : {e}",
@@ -269,7 +269,7 @@ params = json.loads({params_json!r})
             else:
                 return False, "Le script n'a pas généré de fichier"
 
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError, TypeError) as e:
             return False, f"Échec : {e}"
         finally:
             if test_output.exists():

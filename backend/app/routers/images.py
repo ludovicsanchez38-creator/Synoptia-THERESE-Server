@@ -8,6 +8,7 @@ import logging
 import os
 from typing import Literal
 
+import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
@@ -115,7 +116,7 @@ async def generate_image(request: ImageGenerateRequest) -> ImageResponse:
             status_code=503,
             detail=f"Missing dependency for image generation: {e}",
         )
-    except Exception as e:
+    except (httpx.HTTPError, OSError) as e:
         logger.error(f"Image generation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Image generation failed: {e}")
 
@@ -185,7 +186,7 @@ async def generate_with_reference(
     except ValueError as e:
         logger.error(f"Image generation config error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
+    except (httpx.HTTPError, OSError) as e:
         logger.error(f"Image generation with reference failed: {e}")
         raise HTTPException(status_code=500, detail=f"Image generation failed: {e}")
 
@@ -243,6 +244,6 @@ async def delete_image(image_id: str) -> dict:
     try:
         image.file_path.unlink()
         return {"deleted": True, "id": image_id}
-    except Exception as e:
+    except OSError as e:
         logger.error(f"Failed to delete image {image_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete image: {e}")
