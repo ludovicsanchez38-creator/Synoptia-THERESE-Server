@@ -212,8 +212,8 @@ async def logout(
         body = await request.json()
         if rt := body.get("refresh_token"):
             await revoke_refresh_token(session, rt)
-    except Exception:
-        pass
+    except (ValueError, KeyError) as e:
+        logger.debug("Logout refresh token revocation skipped: %s", e)
 
     await log_audit(
         session=session,

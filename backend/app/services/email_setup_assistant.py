@@ -4,11 +4,14 @@ THÉRÈSE v2 - Email Setup Assistant
 Agent intelligent pour guider l'utilisateur dans la configuration email.
 """
 
+import logging
 import re
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -96,9 +99,9 @@ class EmailSetupAssistant:
                             source='mcp'
                         )
                         break
-        except Exception:
+        except Exception as e:
             # MCP service not available or no Google server configured
-            pass
+            logger.debug("MCP Google credentials not available: %s", e)
 
         return SetupStatus(
             has_gmail=gmail_account is not None,

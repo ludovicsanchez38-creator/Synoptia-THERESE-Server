@@ -173,7 +173,7 @@ class OpenRouterProvider(BaseProvider):
             error_body = ""
             try:
                 error_body = e.response.text
-            except Exception:
+            except (ValueError, AttributeError):
                 pass
             logger.error(f"OpenRouter API error: {e.response.status_code} - {error_body}")
 

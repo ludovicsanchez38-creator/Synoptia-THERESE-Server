@@ -64,8 +64,8 @@ async def lifespan(app: FastAPI):
             from app.services import close_qdrant
 
             await close_qdrant()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Qdrant shutdown cleanup: %s", e)
 
     logger.info("Thérèse Server arrêté")
 
@@ -183,7 +183,8 @@ Les admins voient les utilisateurs de leur organisation.
             request.state.user_id = payload.get("sub")
             request.state.user_role = payload.get("role")
             request.state.org_id = payload.get("org_id")
-        except Exception:
+        except (ValueError, KeyError) as e:
+            logger.debug("Token decode failed: %s", e)
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Token invalide ou expire"},

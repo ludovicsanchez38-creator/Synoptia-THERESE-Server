@@ -146,7 +146,8 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         try:
             yield session
             await session.commit()
-        except Exception:
+        except Exception as e:
+            logger.debug("Session rollback (get_session): %s", e)
             await session.rollback()
             raise
 
@@ -175,6 +176,7 @@ async def get_session_context():
         try:
             yield session
             await session.commit()
-        except Exception:
+        except Exception as e:
+            logger.debug("Session rollback (get_session_context): %s", e)
             await session.rollback()
             raise

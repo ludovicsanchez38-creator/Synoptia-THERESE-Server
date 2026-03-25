@@ -352,7 +352,7 @@ NE génère PAS de code Python. Écris directement les tableaux de données.
                     if cell.value:
                         cell_length = len(str(cell.value))
                         max_length = max(max_length, cell_length)
-                except Exception:
+                except (TypeError, AttributeError):
                     pass
 
             # Limiter entre 10 et 50 caractères

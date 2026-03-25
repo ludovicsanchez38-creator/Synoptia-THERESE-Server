@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 import { useChatStore } from "../../stores/chatStore";
 import Spinner from "../ui/Spinner";
 
@@ -75,9 +76,15 @@ export default function MessageList() {
                   )}
                 </div>
               )}
-              <div className="text-sm whitespace-pre-wrap break-words">
-                {msg.content}
-              </div>
+              {isUser ? (
+                <div className="text-sm whitespace-pre-wrap break-words">
+                  {msg.content}
+                </div>
+              ) : (
+                <div className="prose prose-invert prose-sm max-w-none break-words">
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                </div>
+              )}
               <div
                 className={`text-[10px] mt-1 ${
                   isUser ? "text-white/50 text-right" : "text-[var(--color-muted)]/60"

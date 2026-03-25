@@ -111,8 +111,8 @@ def _resolve_agents_dir() -> Path:
                 conn.close()
                 if row and row[0]:
                     source_path = row[0]
-        except Exception:
-            pass
+        except (OSError, sqlite3.Error) as e:
+            logger.debug("Failed to read source_path from DB: %s", e)
 
     if not source_path:
         # Emplacements connus

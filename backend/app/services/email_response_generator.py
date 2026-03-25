@@ -5,8 +5,12 @@ Génère des brouillons de réponse intelligents via LLM.
 US-EMAIL-09
 """
 
+import logging
+
 from app.services.llm import get_llm_service
 from app.services.user_profile import get_cached_profile
+
+logger = logging.getLogger(__name__)
 
 
 class EmailResponseGenerator:
@@ -109,8 +113,9 @@ Rédige une réponse appropriée en français."""
 
             return response_text
 
-        except Exception:
+        except Exception as e:
             # Fallback si erreur LLM
+            logger.warning("LLM email response generation failed: %s", e)
             return f"""Bonjour {from_name},
 
 Merci pour votre email concernant : {subject}

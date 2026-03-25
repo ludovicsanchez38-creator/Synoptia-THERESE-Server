@@ -10,6 +10,7 @@ const ChatPage = lazy(() => import("./pages/Chat"));
 const TasksPage = lazy(() => import("./pages/Tasks"));
 const CRMPage = lazy(() => import("./pages/CRM"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const Legal = lazy(() => import("./pages/Legal"));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
@@ -53,6 +54,7 @@ export default function App() {
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-center"><Spinner size="lg" /><p className="mt-4 text-sm text-[var(--color-muted)]">Chargement...</p></div></div>}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/legal" element={<Legal />} />
       <Route
         path="/chat"
         element={

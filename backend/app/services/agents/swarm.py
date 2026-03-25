@@ -41,8 +41,8 @@ def _get_agent_model(agent_id: str) -> str | None:
             conn.close()
             if row and row[0]:
                 return row[0]
-    except Exception:
-        pass
+    except (OSError, sqlite3.Error) as e:
+        logger.debug("Failed to read agent model preference: %s", e)
     return None
 
 

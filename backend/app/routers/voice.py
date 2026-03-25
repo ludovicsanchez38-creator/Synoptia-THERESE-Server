@@ -41,8 +41,8 @@ async def _get_groq_api_key(session: AsyncSession) -> str | None:
         if is_value_encrypted(pref.value):
             try:
                 return decrypt_value(pref.value)
-            except Exception:
-                logger.warning("Échec déchiffrement clé Groq")
+            except Exception as e:
+                logger.warning("Échec déchiffrement clé Groq: %s", e)
                 return None
         return pref.value
 
@@ -148,5 +148,5 @@ async def transcribe_audio(
         # Clean up temp file
         try:
             os.unlink(tmp_path)
-        except Exception:
+        except OSError:
             pass

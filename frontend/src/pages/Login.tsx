@@ -89,6 +89,9 @@ export default function LoginPage() {
         <p className="text-center text-xs text-[var(--color-muted)] mt-8">
           Thérèse Server v0.1.0 - Synoptïa
         </p>
+        <p className="text-center text-xs text-[var(--color-muted)]/50 mt-4">
+          <a href="/legal" className="hover:underline">Mentions légales</a>
+        </p>
       </div>
     </div>
   );
