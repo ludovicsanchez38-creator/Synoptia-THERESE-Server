@@ -9,7 +9,7 @@ import asyncio
 import hashlib
 import logging
 import mimetypes
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile
@@ -435,8 +435,8 @@ async def index_file(
 
     # Mettre à jour les métadonnées
     file_meta.chunk_count = count
-    file_meta.indexed_at = datetime.utcnow()
-    file_meta.updated_at = datetime.utcnow()
+    file_meta.indexed_at = datetime.now(UTC)
+    file_meta.updated_at = datetime.now(UTC)
     session.add(file_meta)
 
     logger.info(

@@ -9,7 +9,7 @@ Utilise par crm.py (router), crm_sync.py (service) et crm_import.py (service).
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -258,7 +258,7 @@ async def upsert_contact(
         existing.stage = _get("Stage", "contact") or "contact"
         existing.score = score
         existing.tags = tags_json
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(UTC)
         return existing, False
     else:
         contact = Contact(
@@ -359,7 +359,7 @@ async def upsert_project(
         existing.status = status
         existing.budget = budget
         existing.notes = notes
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(UTC)
         return existing, False
     else:
         project = Project(
@@ -443,7 +443,7 @@ async def upsert_task(
         existing.status = task_status
         existing.due_date = due_date
         existing.completed_at = completed_at
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(UTC)
         return existing, False
     else:
         task = Task(
@@ -454,7 +454,7 @@ async def upsert_task(
             status=task_status,
             due_date=due_date,
             completed_at=completed_at,
-            created_at=created_at or datetime.utcnow(),
+            created_at=created_at or datetime.now(UTC),
         )
         session.add(task)
         return task, True
@@ -522,7 +522,7 @@ async def upsert_deliverable_from_import(
         existing.description = description
         existing.project_id = project_id
         existing.status = status
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(UTC)
         return existing, False
     else:
         deliverable = Deliverable(
@@ -552,11 +552,11 @@ async def update_last_sync_time(session: AsyncSession) -> str:
         select(Preference).where(Preference.key == "crm_last_sync")
     )
     last_sync_pref = result.scalar_one_or_none()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(UTC).isoformat()
 
     if last_sync_pref:
         last_sync_pref.value = now
-        last_sync_pref.updated_at = datetime.utcnow()
+        last_sync_pref.updated_at = datetime.now(UTC)
     else:
         last_sync_pref = Preference(key="crm_last_sync", value=now, category="crm")
         session.add(last_sync_pref)

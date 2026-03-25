@@ -6,7 +6,7 @@ Phase 4 - Invoicing
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,7 +60,7 @@ async def _generate_invoice_number(session: AsyncSession, document_type: str = "
         "avoir": "AV",
     }
     prefix = prefix_map.get(document_type, "FACT")
-    current_year = datetime.utcnow().year
+    current_year = datetime.now(UTC).year
 
     # Utiliser MAX pour trouver le numéro le plus élevé (plus fiable que order_by created_at)
     statement = (
@@ -209,7 +209,7 @@ async def create_invoice(
     invoice_number = await _generate_invoice_number(session, document_type)
 
     # Dates par défaut
-    issue_date = datetime.fromisoformat(request.issue_date.replace("Z", "")) if request.issue_date else datetime.utcnow()
+    issue_date = datetime.fromisoformat(request.issue_date.replace("Z", "")) if request.issue_date else datetime.now(UTC)
     due_date = datetime.fromisoformat(request.due_date.replace("Z", "")) if request.due_date else issue_date + timedelta(days=30)
 
     # Créer la facture
@@ -251,7 +251,7 @@ async def create_invoice(
     invoice.subtotal_ht = subtotal_ht
     invoice.total_tax = total_tax
     invoice.total_ttc = total_ttc
-    invoice.updated_at = datetime.utcnow()
+    invoice.updated_at = datetime.now(UTC)
 
     session.add(invoice)
     await session.commit()
@@ -334,7 +334,7 @@ async def update_invoice(
         invoice.total_tax = total_tax
         invoice.total_ttc = total_ttc
 
-    invoice.updated_at = datetime.utcnow()
+    invoice.updated_at = datetime.now(UTC)
 
     session.add(invoice)
     await session.commit()
@@ -390,11 +390,11 @@ async def mark_invoice_paid(
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     # Date de paiement
-    payment_date = datetime.fromisoformat(request.payment_date.replace("Z", "")) if request.payment_date else datetime.utcnow()
+    payment_date = datetime.fromisoformat(request.payment_date.replace("Z", "")) if request.payment_date else datetime.now(UTC)
 
     invoice.status = "paid"
     invoice.payment_date = payment_date
-    invoice.updated_at = datetime.utcnow()
+    invoice.updated_at = datetime.now(UTC)
 
     session.add(invoice)
     await session.commit()

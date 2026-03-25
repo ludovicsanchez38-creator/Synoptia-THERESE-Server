@@ -6,7 +6,7 @@ Phase 5 - CRM Features + Local First Export/Import
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
@@ -142,8 +142,8 @@ async def create_activity(
     session.add(activity)
 
     # Mettre à jour last_interaction du contact
-    contact.last_interaction = datetime.utcnow()
-    contact.updated_at = datetime.utcnow()
+    contact.last_interaction = datetime.now(UTC)
+    contact.updated_at = datetime.now(UTC)
     session.add(contact)
 
     # Recalculer le score (interaction = points)
@@ -287,12 +287,12 @@ async def update_deliverable(
 
         # Auto-remplir completed_at si validé
         if request.status == "valide" and deliverable.completed_at is None:
-            deliverable.completed_at = datetime.utcnow()
+            deliverable.completed_at = datetime.now(UTC)
 
     if request.due_date is not None:
         deliverable.due_date = datetime.fromisoformat(request.due_date.replace("Z", ""))
 
-    deliverable.updated_at = datetime.utcnow()
+    deliverable.updated_at = datetime.now(UTC)
 
     session.add(deliverable)
     await session.commit()
@@ -434,8 +434,8 @@ async def update_contact_stage(
 
     # Mettre à jour le stage
     contact.stage = new_stage
-    contact.updated_at = datetime.utcnow()
-    contact.last_interaction = datetime.utcnow()
+    contact.updated_at = datetime.now(UTC)
+    contact.last_interaction = datetime.now(UTC)
     session.add(contact)
 
     # Créer une activité
@@ -860,7 +860,7 @@ async def set_sync_config(
 
     if pref:
         pref.value = spreadsheet_id
-        pref.updated_at = datetime.utcnow()
+        pref.updated_at = datetime.now(UTC)
     else:
         pref = Preference(
             key="crm_spreadsheet_id",

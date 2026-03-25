@@ -4,7 +4,7 @@ THÉRÈSE v2 - Agent System Entities
 Database models for the embedded AI agent system (Atelier).
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlmodel import Field, SQLModel
 
@@ -29,8 +29,8 @@ class AgentTask(SQLModel, table=True):
     tokens_used: int = Field(default=0)
     cost_eur: float = Field(default=0.0)
     error: str | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     merged_at: datetime | None = None
 
 
@@ -45,7 +45,7 @@ class AgentMessage(SQLModel, table=True):
     role: str  # "user", "assistant", "system"
     content: str
     tool_calls: str | None = None  # JSON array
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CodeChange(SQLModel, table=True):
@@ -60,4 +60,4 @@ class CodeChange(SQLModel, table=True):
     diff_hunk: str | None = None
     explanation: str | None = None
     approved: bool | None = None  # None = en attente, True = approuvé, False = rejeté
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

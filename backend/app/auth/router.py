@@ -8,7 +8,7 @@ import json
 import logging
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
@@ -236,7 +236,7 @@ async def accept_charter(
     """Accepter la charte IA (obligatoire au premier login)."""
     current_user.charter_accepted = body.accepted
     if body.accepted:
-        current_user.charter_accepted_at = datetime.utcnow()
+        current_user.charter_accepted_at = datetime.now(UTC)
     session.add(current_user)
     await session.commit()
 

@@ -269,7 +269,7 @@ class EmailClassifierV2:
         # Email récent (<24h)
         if date:
             _date = date if date.tzinfo else date.replace(tzinfo=UTC)
-            if (datetime.utcnow() - _date) < timedelta(hours=24):
+            if (datetime.now(UTC) - _date) < timedelta(hours=24):
                 score += 5
                 signals['recent'] = True
 

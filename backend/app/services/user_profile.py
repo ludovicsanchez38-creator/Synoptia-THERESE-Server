@@ -160,7 +160,7 @@ async def set_user_profile(
     Returns:
         The saved profile
     """
-    from datetime import datetime
+    from datetime import UTC, datetime
 
     try:
         # Get or create preference (BUG-026 : aligner sur key + category)
@@ -179,7 +179,7 @@ async def set_user_profile(
         if pref:
             pref.value = encrypted_value
             pref.category = PROFILE_CATEGORY
-            pref.updated_at = datetime.utcnow()
+            pref.updated_at = datetime.now(UTC)
         else:
             pref = Preference(
                 key=PROFILE_KEY,

@@ -6,7 +6,7 @@ No heavy dependencies (encryption, http_client, Ollama probing).
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -157,7 +157,7 @@ async def set_preference(
     if pref:
         pref.value = request.value
         pref.category = request.category
-        pref.updated_at = datetime.utcnow()
+        pref.updated_at = datetime.now(UTC)
     else:
         pref = Preference(
             key=key,

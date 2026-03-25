@@ -4,7 +4,7 @@ THÉRÈSE v2 - SQLModel Entities
 Database models for structured data storage.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 from uuid import uuid4
 
@@ -51,8 +51,8 @@ class Contact(SQLModel, table=True):
     # Scope fields (E3-05)
     scope: str = Field(default="global", index=True)  # global, project, conversation
     scope_id: str | None = None  # ID of the project or conversation if scoped
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     projects: list["Project"] = Relationship(back_populates="contact")
@@ -90,8 +90,8 @@ class Project(SQLModel, table=True):
     # Scope fields (E3-05)
     scope: str = Field(default="global", index=True)  # global, project, conversation
     scope_id: str | None = None  # ID of the parent project or conversation if scoped
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     contact: Contact | None = Relationship(back_populates="projects")
@@ -111,8 +111,8 @@ class Conversation(SQLModel, table=True):
     org_id: str | None = Field(default=None, index=True)
     title: str | None = None
     summary: str | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow(), index=True)
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow(), index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
 
     # Relationships
     messages: list["Message"] = Relationship(
@@ -134,7 +134,7 @@ class Message(SQLModel, table=True):
     tokens_out: int | None = None
     model: str | None = None
     extra_data: str | None = None  # JSON object stored as string
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow(), index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
 
     # Relationships
     conversation: Conversation | None = Relationship(back_populates="messages")
@@ -161,8 +161,8 @@ class FileMetadata(SQLModel, table=True):
     scope: str = Field(default="global")  # global, project, conversation, contact
     scope_id: str | None = None  # ID of the linked entity
     indexed_at: datetime | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Preference(SQLModel, table=True):
@@ -178,8 +178,8 @@ class Preference(SQLModel, table=True):
     key: str = Field(index=True)  # Plus unique globalement (multi-user)
     value: str  # JSON-encoded value
     category: str = Field(default="general")  # general, ui, llm, memory
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class BoardDecisionDB(SQLModel, table=True):
@@ -199,7 +199,7 @@ class BoardDecisionDB(SQLModel, table=True):
     confidence: str  # high, medium, low (denormalized for quick queries)
     recommendation: str  # Denormalized for quick display
     mode: str = Field(default="cloud")  # cloud or sovereign
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow(), index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
 
 
 class PromptTemplate(SQLModel, table=True):
@@ -216,8 +216,8 @@ class PromptTemplate(SQLModel, table=True):
     prompt: str
     category: str = Field(default="general")
     icon: str | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -263,8 +263,8 @@ class EmailAccount(SQLModel, table=True):
     smtp_use_tls: bool = True
 
     # Metadata
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     last_sync: datetime | None = None
 
     # Relationships
@@ -317,7 +317,7 @@ class EmailMessage(SQLModel, table=True):
     size_bytes: int = 0
 
     # Sync metadata
-    synced_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    synced_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Smart Email Features (US-EMAIL-08, US-EMAIL-10)
     priority: str | None = Field(default=None, index=True)  # 'high' | 'medium' | 'low'
@@ -353,8 +353,8 @@ class EmailLabel(SQLModel, table=True):
     messages_unread: int = 0
 
     # Metadata
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 # =============================================================================
 # CALENDAR MODELS (Phase 2)
@@ -392,8 +392,8 @@ class Calendar(SQLModel, table=True):
     synced_at: datetime | None = None
 
     # Metadata
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     events: list["CalendarEvent"] = Relationship(back_populates="calendar")
@@ -417,7 +417,7 @@ class CalendarEvent(SQLModel, table=True):
     attendees: str | None = None  # JSON array d'emails
     recurrence: str | None = None  # JSON array de règles RRULE
     status: str = "confirmed"  # confirmed, tentative, cancelled
-    synced_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    synced_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     calendar: Calendar | None = Relationship(back_populates="events")
@@ -445,8 +445,8 @@ class Task(SQLModel, table=True):
     project_id: str | None = Field(default=None, foreign_key="projects.id", index=True)
     tags: str | None = None  # JSON array
     completed_at: datetime | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     project: Optional["Project"] = Relationship(back_populates="tasks")
@@ -472,7 +472,7 @@ class Invoice(SQLModel, table=True):
     document_type: str = Field(default="facture", index=True)  # devis, facture, avoir
     tva_applicable: bool = Field(default=True)  # Si False: "TVA non applicable, art. 293 B du CGI"
     currency: str = Field(default="EUR")  # EUR, CHF, USD, GBP
-    issue_date: datetime = Field(default_factory=lambda: datetime.utcnow())
+    issue_date: datetime = Field(default_factory=lambda: datetime.now(UTC))
     due_date: datetime
     status: str = "draft"  # draft, sent, paid, overdue, cancelled
     subtotal_ht: float = 0.0  # Hors taxe
@@ -480,8 +480,8 @@ class Invoice(SQLModel, table=True):
     total_ttc: float = 0.0  # Toutes taxes comprises
     notes: str | None = None
     payment_date: datetime | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     lines: list["InvoiceLine"] = Relationship(back_populates="invoice", cascade_delete=True)
@@ -522,7 +522,7 @@ class Activity(SQLModel, table=True):
     title: str
     description: str | None = None
     extra_data: str | None = None  # JSON extra data (renamed from metadata to avoid SQLModel conflict)
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     contact: Optional["Contact"] = Relationship(back_populates="activities")
@@ -540,8 +540,8 @@ class Deliverable(SQLModel, table=True):
     status: str = Field(default="a_faire")  # a_faire, en_cours, en_revision, valide
     due_date: datetime | None = None
     completed_at: datetime | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     project: Optional["Project"] = Relationship(back_populates="deliverables")

@@ -9,7 +9,7 @@ et l'installe dans ~/.therese/tools/.
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -159,7 +159,7 @@ params = json.loads({params_json!r})
             "name": name,
             "description": description,
             "version": "1.0.0",
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "source_model": model or "manual",
             "generation_attempts": 1,
             "output_format": output_format,

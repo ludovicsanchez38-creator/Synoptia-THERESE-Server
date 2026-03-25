@@ -8,7 +8,7 @@ Zero dépendance externe (pas de Redis, pas de RabbitMQ).
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class AgentMessage:
     type: str  # "request", "spec", "implementation_result", "review", "feedback", "clarification"
     content: str
     metadata: dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.utcnow())
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class AgentMessageBus:

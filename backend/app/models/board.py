@@ -4,7 +4,7 @@ THÉRÈSE v2 - Board de Décision - Models
 Modèles Pydantic pour le board de décision stratégique.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -150,7 +150,7 @@ class AdvisorOpinion(BaseModel):
     name: str
     emoji: str
     content: str
-    generated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class BoardMode(str, Enum):
@@ -201,7 +201,7 @@ class BoardDecision(BaseModel):
     opinions: list[AdvisorOpinion]
     synthesis: BoardSynthesis
     mode: str = "cloud"
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class BoardDecisionCreate(BaseModel):

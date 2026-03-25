@@ -5,7 +5,7 @@ CRUD + seed de modeles de prompts pour collectivites et PME.
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -308,7 +308,7 @@ async def update_template(
     if body.icon is not None:
         template.icon = body.icon
 
-    template.updated_at = datetime.utcnow()
+    template.updated_at = datetime.now(UTC)
     session.add(template)
     await session.commit()
     await session.refresh(template)

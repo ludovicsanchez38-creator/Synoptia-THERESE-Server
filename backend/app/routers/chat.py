@@ -5,7 +5,7 @@ CRUD conversations + messages. Le streaming LLM sera activé avec Docker.
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -203,7 +203,7 @@ async def add_message(
     session.add(message)
 
     # Mettre à jour le timestamp de la conversation
-    conversation.updated_at = datetime.utcnow()
+    conversation.updated_at = datetime.now(UTC)
     session.add(conversation)
 
     await session.commit()

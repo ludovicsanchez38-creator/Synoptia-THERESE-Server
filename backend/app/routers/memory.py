@@ -7,7 +7,7 @@ No heavy dependencies (Qdrant, sentence_transformers, scoring).
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -185,7 +185,7 @@ async def create_contact(
         tags=json.dumps(request.tags) if request.tags else None,
         stage=request.stage,
         source=request.source,
-        last_interaction=datetime.utcnow(),
+        last_interaction=datetime.now(UTC),
     )
     set_owner(contact, current_user)
     session.add(contact)
@@ -229,8 +229,8 @@ async def update_contact(
     for key, value in update_data.items():
         setattr(contact, key, value)
 
-    contact.updated_at = datetime.utcnow()
-    contact.last_interaction = datetime.utcnow()
+    contact.updated_at = datetime.now(UTC)
+    contact.last_interaction = datetime.now(UTC)
 
     await session.commit()
     await session.refresh(contact)

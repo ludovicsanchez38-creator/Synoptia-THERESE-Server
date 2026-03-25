@@ -10,7 +10,7 @@ Sprint 2 - PERF-2.1: Refactored to use modular providers.
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -263,7 +263,7 @@ AUTORISÉ : les listes à puces (- point clé : valeur).
             "janvier", "février", "mars", "avril", "mai", "juin",
             "juillet", "août", "septembre", "octobre", "novembre", "décembre",
         ]
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         day = str(now.day)
         month_fr = _MOIS_FR[now.month - 1]
         current_date = f"{day} {month_fr} {now.strftime('%Y, %H:%M')} UTC"

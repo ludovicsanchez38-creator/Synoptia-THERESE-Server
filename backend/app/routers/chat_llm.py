@@ -7,7 +7,7 @@ Dégradation gracieuse si les providers LLM ne sont pas disponibles.
 
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -226,7 +226,7 @@ async def send_message_stream(
         content=data.message,
     )
     session.add(user_msg)
-    conversation.updated_at = datetime.utcnow()
+    conversation.updated_at = datetime.now(UTC)
     session.add(conversation)
     await session.commit()
 
