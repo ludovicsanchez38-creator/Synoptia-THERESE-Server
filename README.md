@@ -93,8 +93,8 @@ docker compose up -d
 
 # Premier admin cree automatiquement :
 #   Email : admin@therese.local
-#   Mot de passe : admin
-#   (a changer immediatement)
+#   Mot de passe : genere aleatoirement (affiche au premier lancement)
+#   En dev : mot de passe par defaut "admin"
 ```
 
 L'application est accessible sur `http://localhost` (Caddy gere le HTTPS en production).
@@ -227,15 +227,35 @@ curl -s -X POST http://localhost/api/calc/roi \
 - Tous les secrets sont generes via `openssl rand -hex 32`
 - Mots de passe hashes en bcrypt (cost 12)
 - JWT avec expiration configurable (defaut 1h)
-- Headers securite : HSTS, X-Frame-Options DENY, X-Content-Type-Options nosniff
+- Headers securite : CSP, HSTS, X-Frame-Options DENY, X-Content-Type-Options nosniff, Permissions-Policy
+- Compression gzip/zstd (Caddy)
 - Rate limiting (SlowAPI) sur les endpoints sensibles
 - Audit trail complet (IP, action, user, timestamp)
+- Blocage demarrage si secrets par defaut en production
+- Circuit breaker + retry backoff sur les providers LLM
 
 ---
 
 ## Feuille de route
 
-### Fait (v0.1.0)
+### v0.2.0 (25 mars 2026)
+- [x] CI/CD GitHub Actions (ruff + pytest + vitest + build)
+- [x] Dockerfile multi-stage (PyTorch CPU-only, user non-root)
+- [x] Isolation multi-tenant sur tous les routers (CurrentUser + scope_query)
+- [x] CSP + compression gzip/zstd + headers securite Caddy
+- [x] Circuit breaker + retry backoff LLM
+- [x] Recherche globale Ctrl+K (conversations, contacts, taches)
+- [x] Mentions legales + politique de confidentialite
+- [x] Markdown dans le chat (react-markdown)
+- [x] 20 tests frontend Vitest (stores + apiFetch)
+- [x] 160/216 except Exception remplaces par exceptions typees
+- [x] 175 datetime.utcnow() migres vers datetime.now(UTC)
+- [x] Seed securise (mot de passe aleatoire en production)
+- [x] Blocage secrets par defaut en production
+- [x] Backups rclone-ready (BACKUP_REMOTE env var)
+- [x] Score UltraJury : 64.6/100
+
+### v0.1.0 (18 mars 2026)
 - [x] Auth JWT + RBAC (admin/manager/agent)
 - [x] Chat multi-modeles avec streaming SSE
 - [x] Templates prompts secteur public (10)
