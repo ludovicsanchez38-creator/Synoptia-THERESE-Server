@@ -77,5 +77,8 @@ jobs:
       - name: Installer les dependances
         run: npm ci
 
+      - name: Tests (vitest)
+        run: npm test
+
       - name: Build TypeScript + Vite
         run: npm run build
