@@ -14,9 +14,10 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import httpx
-from app.services.http_client import get_http_client
 from bs4 import BeautifulSoup
 from fastapi import HTTPException
+
+from app.services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -444,5 +445,5 @@ def format_message_for_storage(gmail_message: dict) -> dict:
         'body_plain': body_plain,
         'body_html': body_html,
         'size_bytes': gmail_message.get('sizeEstimate', 0),
-        'synced_at': datetime.utcnow(),
+        'synced_at': datetime.now(UTC),
     }

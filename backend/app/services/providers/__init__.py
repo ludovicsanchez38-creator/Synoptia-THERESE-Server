@@ -17,8 +17,8 @@ from .base import (
 )
 from .deepseek import DeepSeekProvider
 from .gemini import GeminiProvider
-from .infomaniak import InfomaniakProvider
 from .grok import GrokProvider
+from .infomaniak import InfomaniakProvider
 from .mistral import MistralProvider
 from .ollama import OllamaProvider
 from .openai import OpenAIProvider

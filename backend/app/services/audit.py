@@ -66,7 +66,7 @@ class ActivityLog(SQLModel, table=True):
     __tablename__ = "activity_logs"
 
     id: int | None = Field(default=None, primary_key=True)
-    timestamp: datetime = Field(default_factory=lambda: datetime.utcnow(), index=True)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
     action: str = Field(index=True)  # AuditAction value
     resource_type: str | None = None  # contact, project, conversation, etc.
     resource_id: str | None = None
@@ -215,7 +215,7 @@ class AuditService:
 
         from sqlalchemy import delete
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
         query = delete(ActivityLog).where(ActivityLog.timestamp < cutoff_date)
         result = await self.session.execute(query)

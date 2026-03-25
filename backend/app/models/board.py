@@ -150,7 +150,7 @@ class AdvisorOpinion(BaseModel):
     name: str
     emoji: str
     content: str
-    generated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class BoardMode(str, Enum):
@@ -201,7 +201,7 @@ class BoardDecision(BaseModel):
     opinions: list[AdvisorOpinion]
     synthesis: BoardSynthesis
     mode: str = "cloud"
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class BoardDecisionCreate(BaseModel):

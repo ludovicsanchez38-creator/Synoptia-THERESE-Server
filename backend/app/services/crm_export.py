@@ -13,12 +13,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from app.models.entities import Contact, Deliverable, Project
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+from app.models.entities import Contact, Deliverable, Project
 
 logger = logging.getLogger(__name__)
 
@@ -316,7 +317,7 @@ class CRMExportService:
         result = await self.session.execute(statement)
         contacts = result.scalars().all()
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
         if format == "csv":
             data = export_to_csv(contacts, CONTACT_COLUMNS)
@@ -370,7 +371,7 @@ class CRMExportService:
         result = await self.session.execute(statement)
         projects = result.scalars().all()
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
         if format == "csv":
             data = export_to_csv(projects, PROJECT_COLUMNS)
@@ -424,7 +425,7 @@ class CRMExportService:
         result = await self.session.execute(statement)
         deliverables = result.scalars().all()
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
 
         if format == "csv":
             data = export_to_csv(deliverables, DELIVERABLE_COLUMNS)
@@ -480,7 +481,7 @@ class CRMExportService:
         )
         deliverables = deliverables_result.scalars().all()
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         total_count = len(contacts) + len(projects) + len(deliverables)
 
         if format == "xlsx":
@@ -513,7 +514,7 @@ class CRMExportService:
 
         elif format == "json":
             data = {
-                "export_date": datetime.utcnow().isoformat(),
+                "export_date": datetime.now(UTC).isoformat(),
                 "contacts": [
                     {attr: getattr(c, attr, None) for attr, _ in CONTACT_COLUMNS}
                     for c in contacts

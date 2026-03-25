@@ -8,13 +8,14 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from app.config import settings
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.gzip import GZipMiddleware
+
+from app.config import settings
 
 # Rate limiting (SEC-015)
 from app.rate_limit import HAS_SLOWAPI, limiter
@@ -228,7 +229,7 @@ Les admins voient les utilisateurs de leur organisation.
 
             client = get_qdrant_client()
             if client:
-                collections = await client.get_collections()
+                await client.get_collections()
                 services["qdrant"] = "ok"
         except Exception as e:
             services["qdrant"] = f"error: {e}"
@@ -308,8 +309,9 @@ Les admins voient les utilisateurs de leur organisation.
     except Exception as e:
         logger.warning("Router skills disabled: %s", e)
 
-    # Les routers seront activés au fur et à mesure de P0-4
-    # from app.routers import chat_router, config_router, memory_router, ...
+    # Recherche globale
+    from app.routers.search import router as search_router
+    app.include_router(search_router)
 
     return app
 

@@ -9,11 +9,11 @@ import secrets
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.auth.models import AuditLog, RefreshToken, User, UserRole
 from app.config import settings
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +47,9 @@ def create_access_token(user: User) -> str:
         "name": user.name,
         "role": user.role,
         "org_id": user.org_id,
-        "exp": datetime.utcnow() + timedelta(seconds=settings.jwt_lifetime_seconds),
-        "iat": datetime.utcnow(),
+        "charter_accepted": user.charter_accepted,
+        "exp": datetime.now(UTC) + timedelta(seconds=settings.jwt_lifetime_seconds),
+        "iat": datetime.now(UTC),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
 
@@ -81,7 +82,7 @@ async def authenticate_user(session: AsyncSession, email: str, password: str) ->
         return None
 
     # Update last_login
-    user.last_login = datetime.utcnow()
+    user.last_login = datetime.now(UTC)
     session.add(user)
     await session.commit()
 
@@ -155,7 +156,7 @@ async def store_refresh_token(
     rt = RefreshToken(
         user_id=user_id,
         token=token,
-        expires_at=datetime.utcnow() + timedelta(seconds=settings.jwt_refresh_lifetime_seconds),
+        expires_at=datetime.now(UTC) + timedelta(seconds=settings.jwt_refresh_lifetime_seconds),
     )
     session.add(rt)
     await session.commit()
@@ -169,7 +170,7 @@ async def validate_refresh_token(
     stmt = select(RefreshToken).where(
         RefreshToken.token == token,
         RefreshToken.revoked == False,  # noqa: E712
-        RefreshToken.expires_at > datetime.utcnow(),
+        RefreshToken.expires_at > datetime.now(UTC),
     )
     result = await session.execute(stmt)
     rt = result.scalar_one_or_none()

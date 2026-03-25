@@ -4,7 +4,7 @@ import { useAuthStore } from "../stores/authStore";
 const navLinks = [
   { to: "/chat", label: "Chat" },
   { to: "/tasks", label: "T\u00e2ches" },
-  { to: "/crm", label: "CRM" },
+  { to: "/crm", label: "Contacts" },
 ];
 
 export default function NavBar() {

@@ -9,6 +9,11 @@ import json
 import logging
 from datetime import UTC, datetime
 
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
+from app.auth.rbac import CurrentUser
 from app.models.database import get_session
 from app.models.entities import Preference, PromptTemplate
 from app.models.schemas_personalisation import (
@@ -18,9 +23,6 @@ from app.models.schemas_personalisation import (
     PromptTemplateResponse,
     PromptTemplateUpdate,
 )
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,7 @@ router = APIRouter()
 
 @router.get("/templates", response_model=list[PromptTemplateResponse])
 async def list_prompt_templates(
+    current_user: CurrentUser,
     category: str | None = None,
     session: AsyncSession = Depends(get_session),
 ):
@@ -62,6 +65,7 @@ async def list_prompt_templates(
 @router.post("/templates", response_model=PromptTemplateResponse)
 async def create_prompt_template(
     request: PromptTemplateCreate,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Create a new prompt template."""
@@ -89,6 +93,7 @@ async def create_prompt_template(
 @router.get("/templates/{template_id}", response_model=PromptTemplateResponse)
 async def get_prompt_template(
     template_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Get a specific prompt template."""
@@ -115,6 +120,7 @@ async def get_prompt_template(
 async def update_prompt_template(
     template_id: str,
     request: PromptTemplateUpdate,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Update a prompt template."""
@@ -135,7 +141,7 @@ async def update_prompt_template(
     if request.icon is not None:
         template.icon = request.icon
 
-    template.updated_at = datetime.utcnow()
+    template.updated_at = datetime.now(UTC)
     await session.commit()
     await session.refresh(template)
 
@@ -153,6 +159,7 @@ async def update_prompt_template(
 @router.delete("/templates/{template_id}")
 async def delete_prompt_template(
     template_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Delete a prompt template."""
@@ -177,6 +184,7 @@ async def delete_prompt_template(
 
 @router.get("/llm-behavior", response_model=LLMBehaviorSettings)
 async def get_llm_behavior(
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Get LLM behavior settings."""
@@ -198,6 +206,7 @@ async def get_llm_behavior(
 @router.post("/llm-behavior", response_model=LLMBehaviorSettings)
 async def set_llm_behavior(
     settings: LLMBehaviorSettings,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Set LLM behavior settings."""
@@ -210,7 +219,7 @@ async def set_llm_behavior(
 
     if pref:
         pref.value = value
-        pref.updated_at = datetime.utcnow()
+        pref.updated_at = datetime.now(UTC)
     else:
         pref = Preference(
             key="llm_behavior",
@@ -230,6 +239,7 @@ async def set_llm_behavior(
 
 @router.get("/features", response_model=FeatureVisibilitySettings)
 async def get_feature_visibility(
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Get feature visibility settings."""
@@ -251,6 +261,7 @@ async def get_feature_visibility(
 @router.post("/features", response_model=FeatureVisibilitySettings)
 async def set_feature_visibility(
     settings: FeatureVisibilitySettings,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Set feature visibility settings."""
@@ -263,7 +274,7 @@ async def set_feature_visibility(
 
     if pref:
         pref.value = value
-        pref.updated_at = datetime.utcnow()
+        pref.updated_at = datetime.now(UTC)
     else:
         pref = Preference(
             key="feature_visibility",
@@ -283,6 +294,7 @@ async def set_feature_visibility(
 
 @router.get("/status")
 async def get_personalisation_status(
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Get combined personalisation status."""

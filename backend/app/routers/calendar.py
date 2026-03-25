@@ -12,6 +12,10 @@ import json
 import logging
 from datetime import UTC, datetime
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
 from app.models.database import get_session
 from app.models.entities import Calendar, CalendarEvent, EmailAccount, generate_uuid
 from app.models.schemas import (
@@ -34,9 +38,6 @@ from app.services.calendar.provider_factory import (
 )
 from app.services.calendar_service import CalendarService
 from app.services.encryption import decrypt_value, encrypt_value, is_value_encrypted
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -157,7 +158,7 @@ async def _list_google_calendars(
                 existing_cal.timezone = cal_data.get("timeZone", "UTC")
                 existing_cal.primary = cal_data.get("primary", False)
                 existing_cal.provider = "google"
-                existing_cal.synced_at = datetime.utcnow()
+                existing_cal.synced_at = datetime.now(UTC)
                 session.add(existing_cal)
                 calendars.append(existing_cal)
             else:
@@ -170,7 +171,7 @@ async def _list_google_calendars(
                     primary=cal_data.get("primary", False),
                     provider="google",
                     remote_id=cal_id,
-                    synced_at=datetime.utcnow(),
+                    synced_at=datetime.now(UTC),
                 )
                 session.add(new_cal)
                 calendars.append(new_cal)
@@ -192,7 +193,7 @@ async def _list_google_calendars(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to list Google calendars: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -252,7 +253,7 @@ async def create_calendar(
             description=cal_dto.description,
             timezone=cal_dto.timezone,
             primary=cal_dto.is_primary,
-            synced_at=datetime.utcnow().isoformat(),
+            synced_at=datetime.now(UTC).isoformat(),
         )
 
     elif provider_type == "google":
@@ -282,7 +283,7 @@ async def create_calendar(
                 primary=False,
                 provider="google",
                 remote_id=cal_data["id"],
-                synced_at=datetime.utcnow(),
+                synced_at=datetime.now(UTC),
             )
             session.add(new_cal)
             await session.commit()
@@ -298,7 +299,7 @@ async def create_calendar(
                 synced_at=new_cal.synced_at.isoformat() if new_cal.synced_at else None,
             )
 
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError) as e:
             logger.error(f"Failed to create Google calendar: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -337,7 +338,7 @@ async def delete_calendar(
 
         return {"success": True, "message": "Calendar deleted"}
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to delete calendar: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -384,7 +385,7 @@ async def setup_caldav_calendar(
             existing.caldav_password = encrypt_value(request.password)
             existing.summary = cal_info["name"] or existing.summary
             existing.sync_status = "idle"
-            existing.synced_at = datetime.utcnow()
+            existing.synced_at = datetime.now(UTC)
             session.add(existing)
             calendars.append(existing)
         else:
@@ -397,7 +398,7 @@ async def setup_caldav_calendar(
                 caldav_username=request.username,
                 caldav_password=encrypt_value(request.password),
                 sync_status="idle",
-                synced_at=datetime.utcnow(),
+                synced_at=datetime.now(UTC),
             )
             session.add(new_cal)
             calendars.append(new_cal)
@@ -527,7 +528,7 @@ async def _list_events_provider(
             attendees=evt.attendees,
             recurrence=evt.recurrence,
             status=evt.status,
-            synced_at=datetime.utcnow().isoformat(),
+            synced_at=datetime.now(UTC).isoformat(),
         )
         for evt in events_dto
     ]
@@ -588,7 +589,7 @@ async def _list_events_google(
                 )
                 existing_event.recurrence = json.dumps(event_data.get("recurrence", []))
                 existing_event.status = event_data.get("status", "confirmed")
-                existing_event.synced_at = datetime.utcnow()
+                existing_event.synced_at = datetime.now(UTC)
                 session.add(existing_event)
                 events.append(existing_event)
             else:
@@ -616,7 +617,7 @@ async def _list_events_google(
                     ),
                     recurrence=json.dumps(event_data.get("recurrence", [])),
                     status=event_data.get("status", "confirmed"),
-                    synced_at=datetime.utcnow(),
+                    synced_at=datetime.now(UTC),
                 )
                 session.add(new_event)
                 events.append(new_event)
@@ -645,7 +646,7 @@ async def _list_events_google(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to list events: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -716,8 +717,8 @@ async def _create_event_provider(
         start = datetime.strptime(request.start_date, "%Y-%m-%d").date()
         end = datetime.strptime(request.end_date, "%Y-%m-%d").date()
     else:
-        start = datetime.fromisoformat(request.start_datetime.replace("Z", "")) if request.start_datetime else datetime.utcnow()
-        end = datetime.fromisoformat(request.end_datetime.replace("Z", "")) if request.end_datetime else datetime.utcnow()
+        start = datetime.fromisoformat(request.start_datetime.replace("Z", "")) if request.start_datetime else datetime.now(UTC)
+        end = datetime.fromisoformat(request.end_datetime.replace("Z", "")) if request.end_datetime else datetime.now(UTC)
 
     provider_req = ProviderCreateRequest(
         calendar_id=request.calendar_id,
@@ -747,7 +748,7 @@ async def _create_event_provider(
         attendees=evt.attendees,
         recurrence=evt.recurrence,
         status=evt.status,
-        synced_at=datetime.utcnow().isoformat(),
+        synced_at=datetime.now(UTC).isoformat(),
     )
 
 
@@ -824,7 +825,7 @@ async def _create_event_google(
             attendees=json.dumps(request.attendees or []),
             recurrence=json.dumps(request.recurrence or []),
             status=event_data.get("status", "confirmed"),
-            synced_at=datetime.utcnow(),
+            synced_at=datetime.now(UTC),
         )
         session.add(new_event)
         await session.commit()
@@ -849,7 +850,7 @@ async def _create_event_google(
             synced_at=new_event.synced_at.isoformat() if new_event.synced_at else None,
         )
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to create event: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -915,7 +916,7 @@ async def update_event(
             attendees=evt.attendees,
             recurrence=evt.recurrence,
             status=evt.status,
-            synced_at=datetime.utcnow().isoformat(),
+            synced_at=datetime.now(UTC).isoformat(),
         )
 
     # Google Calendar
@@ -983,7 +984,7 @@ async def update_event(
             )
             db_event.recurrence = json.dumps(event_data.get("recurrence", []))
             db_event.status = event_data.get("status", "confirmed")
-            db_event.synced_at = datetime.utcnow()
+            db_event.synced_at = datetime.now(UTC)
             session.add(db_event)
             await session.commit()
             await session.refresh(db_event)
@@ -1007,7 +1008,7 @@ async def update_event(
             synced_at=db_event.synced_at.isoformat() if db_event.synced_at else None,
         )
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to update event: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1053,7 +1054,7 @@ async def delete_event(
 
         return {"success": True, "message": "Evenement supprime"}
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to delete event: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1109,7 +1110,7 @@ async def quick_add_event(
             attendees=json.dumps([]),
             recurrence=json.dumps([]),
             status=event_data.get("status", "confirmed"),
-            synced_at=datetime.utcnow(),
+            synced_at=datetime.now(UTC),
         )
         session.add(new_event)
         await session.commit()
@@ -1134,7 +1135,7 @@ async def quick_add_event(
             synced_at=new_event.synced_at.isoformat(),
         )
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to quick add event: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1176,12 +1177,12 @@ async def sync_calendar(
         return CalendarSyncResponse(
             calendars_synced=calendars_count,
             events_synced=total_events,
-            synced_at=datetime.utcnow().isoformat(),
+            synced_at=datetime.now(UTC).isoformat(),
         )
 
     except HTTPException:
         raise
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to sync calendar: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

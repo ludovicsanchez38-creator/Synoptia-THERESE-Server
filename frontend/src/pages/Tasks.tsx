@@ -120,7 +120,7 @@ export default function TasksPage() {
     <div className="min-h-screen flex flex-col">
       <NavBar />
 
-      <main className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
+      <main id="main-content" className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
         {/* Titre + bouton */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-[var(--color-text)]">
@@ -163,7 +163,7 @@ export default function TasksPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, title: e.target.value })
                 }
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-cyan)]"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]"
                 placeholder="Titre de la t\u00e2che..."
                 autoFocus
               />
@@ -177,7 +177,7 @@ export default function TasksPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-cyan)] resize-none"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)] resize-none"
                 rows={2}
                 placeholder="Description optionnelle..."
               />

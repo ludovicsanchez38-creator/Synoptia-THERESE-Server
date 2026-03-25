@@ -13,10 +13,11 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from app.models.entities import Contact, Deliverable, Project, generate_uuid
 from openpyxl import load_workbook
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+from app.models.entities import Contact, Deliverable, Project, generate_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -468,7 +469,7 @@ class CRMImportService:
                 raw_data = _parse_xlsx(content)
             else:
                 raw_data = _parse_json(content)
-        except Exception as e:
+        except (ValueError, KeyError, UnicodeDecodeError, json.JSONDecodeError) as e:
             return ImportPreview(
                 total_rows=0,
                 sample_rows=[],
@@ -544,7 +545,7 @@ class CRMImportService:
                 raw_data = _parse_xlsx(content)
             else:
                 raw_data = _parse_json(content)
-        except Exception as e:
+        except (ValueError, KeyError, UnicodeDecodeError, json.JSONDecodeError) as e:
             return ImportResult(
                 success=False,
                 errors=[ImportError(row=0, column=None, message=str(e))],
@@ -600,7 +601,7 @@ class CRMImportService:
                     if mapped.get("notes"):
                         existing.notes = mapped["notes"]
 
-                    existing.updated_at = datetime.utcnow()
+                    existing.updated_at = datetime.now(UTC)
                     self.session.add(existing)
                     result.updated += 1
 
@@ -626,7 +627,7 @@ class CRMImportService:
                     self.session.add(contact)
                     result.created += 1
 
-            except Exception as e:
+            except (KeyError, TypeError, ValueError) as e:  # noqa: BLE001 - row-level resilience
                 logger.error(f"Error importing contact row {idx + 1}: {e}")
                 result.errors.append(ImportError(row=idx + 1, column=None, message=str(e)))
                 result.skipped += 1
@@ -667,7 +668,7 @@ class CRMImportService:
                 raw_data = _parse_xlsx(content, sheet_name="Projets")
             else:
                 raw_data = _parse_json(content)
-        except Exception as e:
+        except (ValueError, KeyError, UnicodeDecodeError, json.JSONDecodeError) as e:
             return ImportResult(
                 success=False,
                 errors=[ImportError(row=0, column=None, message=str(e))],
@@ -741,7 +742,7 @@ class CRMImportService:
                     if mapped.get("tags"):
                         existing.tags = _parse_value(mapped["tags"], "tags")
 
-                    existing.updated_at = datetime.utcnow()
+                    existing.updated_at = datetime.now(UTC)
                     self.session.add(existing)
                     result.updated += 1
 
@@ -763,7 +764,7 @@ class CRMImportService:
                     self.session.add(project)
                     result.created += 1
 
-            except Exception as e:
+            except (KeyError, TypeError, ValueError) as e:  # noqa: BLE001 - row-level resilience
                 logger.error(f"Error importing project row {idx + 1}: {e}")
                 result.errors.append(ImportError(row=idx + 1, column=None, message=str(e)))
                 result.skipped += 1
@@ -804,7 +805,7 @@ class CRMImportService:
                 raw_data = _parse_xlsx(content, sheet_name="Livrables")
             else:
                 raw_data = _parse_json(content)
-        except Exception as e:
+        except (ValueError, KeyError, UnicodeDecodeError, json.JSONDecodeError) as e:
             return ImportResult(
                 success=False,
                 errors=[ImportError(row=0, column=None, message=str(e))],
@@ -879,7 +880,7 @@ class CRMImportService:
                     if mapped.get("due_date"):
                         existing.due_date = _parse_value(mapped["due_date"], "datetime")
 
-                    existing.updated_at = datetime.utcnow()
+                    existing.updated_at = datetime.now(UTC)
                     self.session.add(existing)
                     result.updated += 1
 
@@ -898,7 +899,7 @@ class CRMImportService:
                     self.session.add(deliverable)
                     result.created += 1
 
-            except Exception as e:
+            except (KeyError, TypeError, ValueError) as e:  # noqa: BLE001 - row-level resilience
                 logger.error(f"Error importing deliverable row {idx + 1}: {e}")
                 result.errors.append(ImportError(row=idx + 1, column=None, message=str(e)))
                 result.skipped += 1

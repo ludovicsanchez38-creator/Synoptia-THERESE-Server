@@ -8,6 +8,12 @@ Phase 4 - Invoicing
 import logging
 from datetime import UTC, datetime, timedelta
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
+
+from app.auth.rbac import CurrentUser
 from app.models.database import get_session
 from app.models.entities import Contact, Invoice, InvoiceLine
 from app.models.schemas import (
@@ -19,10 +25,6 @@ from app.models.schemas import (
 )
 from app.services.invoice_pdf import InvoicePDFGenerator
 from app.services.user_profile import get_cached_profile
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +61,7 @@ async def _generate_invoice_number(session: AsyncSession, document_type: str = "
         "avoir": "AV",
     }
     prefix = prefix_map.get(document_type, "FACT")
-    current_year = datetime.utcnow().year
+    current_year = datetime.now(UTC).year
 
     # Utiliser MAX pour trouver le numéro le plus élevé (plus fiable que order_by created_at)
     statement = (
@@ -134,6 +136,7 @@ def _invoice_to_response(invoice: Invoice) -> InvoiceResponse:
 
 @router.get("/", response_model=list[InvoiceResponse])
 async def list_invoices(
+    current_user: CurrentUser,
     status: str | None = Query(None, description="Filtrer par status (draft, sent, paid, overdue, cancelled)"),
     contact_id: str | None = Query(None, description="Filtrer par contact"),
     document_type: str | None = Query(None, description="Filtrer par type (devis, facture, avoir)"),
@@ -144,7 +147,7 @@ async def list_invoices(
     """
     Liste les factures avec pagination et filtres.
     """
-    statement = select(Invoice).options(selectinload(Invoice.lines))
+    statement = select(Invoice).options(selectinload(Invoice.lines)).where(Invoice.user_id == current_user.id)
 
     # Filtres
     if status:
@@ -169,6 +172,7 @@ async def list_invoices(
 @router.get("/{invoice_id}", response_model=InvoiceResponse)
 async def get_invoice(
     invoice_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -185,6 +189,7 @@ async def get_invoice(
 @router.post("/", response_model=InvoiceResponse)
 async def create_invoice(
     request: CreateInvoiceRequest,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -208,7 +213,7 @@ async def create_invoice(
     invoice_number = await _generate_invoice_number(session, document_type)
 
     # Dates par défaut
-    issue_date = datetime.fromisoformat(request.issue_date.replace("Z", "")) if request.issue_date else datetime.utcnow()
+    issue_date = datetime.fromisoformat(request.issue_date.replace("Z", "")) if request.issue_date else datetime.now(UTC)
     due_date = datetime.fromisoformat(request.due_date.replace("Z", "")) if request.due_date else issue_date + timedelta(days=30)
 
     # Créer la facture
@@ -250,7 +255,7 @@ async def create_invoice(
     invoice.subtotal_ht = subtotal_ht
     invoice.total_tax = total_tax
     invoice.total_ttc = total_ttc
-    invoice.updated_at = datetime.utcnow()
+    invoice.updated_at = datetime.now(UTC)
 
     session.add(invoice)
     await session.commit()
@@ -267,6 +272,7 @@ async def create_invoice(
 async def update_invoice(
     invoice_id: str,
     request: UpdateInvoiceRequest,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -333,7 +339,7 @@ async def update_invoice(
         invoice.total_tax = total_tax
         invoice.total_ttc = total_ttc
 
-    invoice.updated_at = datetime.utcnow()
+    invoice.updated_at = datetime.now(UTC)
 
     session.add(invoice)
     await session.commit()
@@ -349,6 +355,7 @@ async def update_invoice(
 @router.delete("/{invoice_id}")
 async def delete_invoice(
     invoice_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -378,6 +385,7 @@ async def delete_invoice(
 async def mark_invoice_paid(
     invoice_id: str,
     request: MarkPaidRequest,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -389,11 +397,11 @@ async def mark_invoice_paid(
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     # Date de paiement
-    payment_date = datetime.fromisoformat(request.payment_date.replace("Z", "")) if request.payment_date else datetime.utcnow()
+    payment_date = datetime.fromisoformat(request.payment_date.replace("Z", "")) if request.payment_date else datetime.now(UTC)
 
     invoice.status = "paid"
     invoice.payment_date = payment_date
-    invoice.updated_at = datetime.utcnow()
+    invoice.updated_at = datetime.now(UTC)
 
     session.add(invoice)
     await session.commit()
@@ -409,6 +417,7 @@ async def mark_invoice_paid(
 @router.get("/{invoice_id}/pdf")
 async def generate_invoice_pdf(
     invoice_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -491,6 +500,7 @@ async def generate_invoice_pdf(
 @router.post("/{invoice_id}/send")
 async def send_invoice_by_email(
     invoice_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """

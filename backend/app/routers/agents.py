@@ -8,6 +8,11 @@ import json
 import logging
 from datetime import UTC, datetime
 
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import func, select
+
 from app.models.database import get_session
 from app.models.entities_agents import AgentMessage, AgentTask
 from app.models.schemas_agents import (
@@ -23,10 +28,6 @@ from app.models.schemas_agents import (
 )
 from app.services.agents.git_service import GitService
 from app.services.agents.swarm import SwarmOrchestrator
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import func, select
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ def _get_source_path() -> str | None:
                 p = Path(row[0])
                 if p.exists() and (p / ".git").exists():
                     return str(p)
-    except Exception:
+    except (OSError, ValueError, ImportError):
         pass
 
     # 2. Variable d'environnement explicite
@@ -165,7 +166,7 @@ async def agent_request(
                 data = chunk.model_dump(exclude_none=True)
                 yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logger.error(f"Erreur swarm: {e}", exc_info=True)
             error_chunk = AgentStreamChunk(
                 type="error",
@@ -188,9 +189,9 @@ async def agent_request(
                     db_task.branch_name = branch_name
                     db_task.files_changed = json.dumps(files_changed, ensure_ascii=False) if files_changed else None
                     db_task.diff_summary = diff_summary
-                    db_task.updated_at = datetime.utcnow()
+                    db_task.updated_at = datetime.now(UTC)
                     await update_session.commit()
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Erreur mise à jour tâche: {e}")
 
     return StreamingResponse(
@@ -330,8 +331,8 @@ async def approve_task(
 
     # Mettre à jour la tâche
     task.status = "merged"
-    task.merged_at = datetime.utcnow()
-    task.updated_at = datetime.utcnow()
+    task.merged_at = datetime.now(UTC)
+    task.updated_at = datetime.now(UTC)
     await session.commit()
 
     return {"status": "merged", "task_id": task_id}
@@ -360,7 +361,7 @@ async def reject_task(
         await git.delete_branch(task.branch_name)
 
     task.status = "rejected"
-    task.updated_at = datetime.utcnow()
+    task.updated_at = datetime.now(UTC)
     await session.commit()
 
     return {"status": "rejected", "task_id": task_id}
@@ -401,7 +402,7 @@ async def rollback_task(
         raise HTTPException(status_code=500, detail="Échec du rollback")
 
     task.status = "rejected"
-    task.updated_at = datetime.utcnow()
+    task.updated_at = datetime.now(UTC)
     await session.commit()
 
     return {"status": "rolled_back", "task_id": task_id}
@@ -516,13 +517,13 @@ async def get_status(
         from app.services.agents.config import load_agent_config
         load_agent_config("katia")
         katia_ready = True
-    except Exception:
+    except (ImportError, ValueError, OSError):
         pass
     try:
         from app.services.agents.config import load_agent_config
         load_agent_config("zezette")
         zezette_ready = True
-    except Exception:
+    except (ImportError, ValueError, OSError):
         pass
 
     return AgentStatusResponse(

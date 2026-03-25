@@ -159,7 +159,7 @@ params = json.loads({params_json!r})
             "name": name,
             "description": description,
             "version": "1.0.0",
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "source_model": model or "manual",
             "generation_attempts": 1,
             "output_format": output_format,

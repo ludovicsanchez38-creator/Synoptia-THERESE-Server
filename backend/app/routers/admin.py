@@ -7,18 +7,19 @@ Tous les endpoints necessitent le role admin.
 
 import json
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
-from app.auth.backend import log_audit
-from app.auth.models import AuditLog, Organization, User, UserRole
-from app.auth.rbac import CurrentUser, RequireAdmin
-from app.models.database import get_session
-from app.models.entities import Contact, Conversation, Message
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+from app.auth.backend import log_audit
+from app.auth.models import AuditLog, Organization, User, UserRole
+from app.auth.rbac import RequireAdmin
+from app.models.database import get_session
+from app.models.entities import Contact, Conversation, Message
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -117,7 +118,7 @@ async def get_admin_stats(
     total_conversations = result.scalar_one()
 
     # Messages aujourd hui
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     # Sous-requete : IDs des conversations de l org
     conv_ids_stmt = select(Conversation.id).where(Conversation.org_id == org_id)
     result = await session.execute(
@@ -209,7 +210,7 @@ async def update_user(
         changes["is_active"] = body.is_active
         target.is_active = body.is_active
 
-    target.updated_at = datetime.utcnow()
+    target.updated_at = datetime.now(UTC)
     await session.commit()
 
     # Audit
@@ -260,7 +261,7 @@ async def deactivate_user(
         )
 
     target.is_active = False
-    target.updated_at = datetime.utcnow()
+    target.updated_at = datetime.now(UTC)
     await session.commit()
 
     await log_audit(
@@ -392,7 +393,7 @@ async def update_org_settings(
         org.settings_json = json.dumps(body.settings)
         changes["settings"] = body.settings
 
-    org.updated_at = datetime.utcnow()
+    org.updated_at = datetime.now(UTC)
     await session.commit()
 
     await log_audit(

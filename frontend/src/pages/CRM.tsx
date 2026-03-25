@@ -14,12 +14,12 @@ import {
 type CrmTab = "contacts" | "pipeline" | "activities";
 
 const stageLabels: Record<string, string> = {
-  lead: "Lead",
-  contact: "Contact",
-  prospect: "Prospect",
-  negotiation: "N\u00e9gociation",
-  client: "Client",
-  lost: "Perdu",
+  lead: "Nouveau",
+  contact: "Identifié",
+  prospect: "En cours",
+  negotiation: "En discussion",
+  client: "Actif",
+  lost: "Archivé",
 };
 
 const stageColors: Record<string, string> = {
@@ -79,7 +79,7 @@ export default function CRMPage() {
   }, []);
 
   useEffect(() => {
-    document.title = "CRM - Thérèse";
+    document.title = "Contacts - Thérèse";
     loadData();
   }, [loadData]);
 
@@ -143,10 +143,10 @@ export default function CRMPage() {
     <div className="min-h-screen flex flex-col">
       <NavBar />
 
-      <main className="flex-1 p-4 md:p-6 max-w-6xl mx-auto w-full">
+      <main id="main-content" className="flex-1 p-4 md:p-6 max-w-6xl mx-auto w-full">
         {/* Titre */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-[var(--color-text)]">CRM</h2>
+          <h2 className="text-xl font-bold text-[var(--color-text)]">Contacts</h2>
         </div>
 
         {/* Erreur */}
@@ -167,7 +167,7 @@ export default function CRMPage() {
           {(
             [
               { key: "contacts" as CrmTab, label: "Contacts" },
-              { key: "pipeline" as CrmTab, label: "Pipeline" },
+              { key: "pipeline" as CrmTab, label: "Vue d'ensemble" },
               { key: "activities" as CrmTab, label: "Activit\u00e9s" },
             ] as const
           ).map((tab) => (
@@ -230,7 +230,7 @@ export default function CRMPage() {
                           name: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-cyan)]"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]"
                       placeholder="Nom du contact..."
                       autoFocus
                     />
@@ -248,7 +248,7 @@ export default function CRMPage() {
                           email: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-cyan)]"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]"
                       placeholder="email@exemple.fr"
                     />
                   </div>
@@ -265,7 +265,7 @@ export default function CRMPage() {
                           phone: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-cyan)]"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]"
                       placeholder="06 12 34 56 78"
                     />
                   </div>
@@ -282,7 +282,7 @@ export default function CRMPage() {
                           organization: e.target.value,
                         })
                       }
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-cyan)]"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]"
                       placeholder="Entreprise / Mairie..."
                     />
                   </div>
@@ -313,8 +313,8 @@ export default function CRMPage() {
                         <th className="px-4 py-3">Nom</th>
                         <th className="px-4 py-3">Email</th>
                         <th className="px-4 py-3">T&eacute;l&eacute;phone</th>
-                        <th className="px-4 py-3">Stage</th>
-                        <th className="px-4 py-3">Score</th>
+                        <th className="px-4 py-3">Étape</th>
+                        <th className="px-4 py-3">Priorité</th>
                         <th className="px-4 py-3">Cr&eacute;&eacute; le</th>
                       </tr>
                     </thead>
@@ -381,7 +381,7 @@ export default function CRMPage() {
         {!loading && activeTab === "pipeline" && (
           <div>
             <h3 className="text-sm font-semibold text-[var(--color-text)] mb-4">
-              Pipeline commercial
+              Vue d'ensemble
             </h3>
 
             {pipelineStats ? (
@@ -521,7 +521,7 @@ export default function CRMPage() {
                         description: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus:border-[var(--color-cyan)] resize-none"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)] resize-none"
                     rows={2}
                     placeholder="D&eacute;crivez l'activit&eacute;..."
                   />

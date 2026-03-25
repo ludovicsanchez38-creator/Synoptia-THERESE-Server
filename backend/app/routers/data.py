@@ -12,6 +12,13 @@ import logging
 import re
 from datetime import UTC, datetime
 
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
+from app.auth.models import User
+from app.auth.rbac import CurrentUser, RequireAdmin
 from app.config import settings
 from app.models.database import get_session
 from app.models.entities import (
@@ -41,10 +48,6 @@ from app.services.audit import (
     AuditService,
     log_activity,
 )
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +61,7 @@ router = APIRouter()
 
 @router.get("/export")
 async def export_all_data(
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -82,31 +86,46 @@ async def export_all_data(
     )
 
     # Contacts
-    contacts_result = await session.execute(select(Contact))
+    contacts_result = await session.execute(
+        select(Contact).where((Contact.user_id == current_user.id) | (Contact.scope == "global"))
+    )
     contacts = contacts_result.scalars().all()
 
     # Projects
-    projects_result = await session.execute(select(Project))
+    projects_result = await session.execute(
+        select(Project).where((Project.user_id == current_user.id) | (Project.scope == "global"))
+    )
     projects = projects_result.scalars().all()
 
     # Conversations
-    conversations_result = await session.execute(select(Conversation))
+    conversations_result = await session.execute(
+        select(Conversation).where(Conversation.user_id == current_user.id)
+    )
     conversations = conversations_result.scalars().all()
 
-    # Messages
-    messages_result = await session.execute(select(Message))
+    # Messages (filtres par conversations du user)
+    conv_ids = [c.id for c in conversations]
+    messages_result = await session.execute(
+        select(Message).where(Message.conversation_id.in_(conv_ids)) if conv_ids else select(Message).where(False)
+    )
     messages = messages_result.scalars().all()
 
     # Files
-    files_result = await session.execute(select(FileMetadata))
+    files_result = await session.execute(
+        select(FileMetadata).where((FileMetadata.user_id == current_user.id) | (FileMetadata.scope == "global"))
+    )
     files = files_result.scalars().all()
 
     # Preferences (excluding API keys)
-    prefs_result = await session.execute(select(Preference))
+    prefs_result = await session.execute(
+        select(Preference).where((Preference.user_id == current_user.id) | (Preference.user_id.is_(None)))
+    )
     preferences = prefs_result.scalars().all()
 
     # Board decisions
-    decisions_result = await session.execute(select(BoardDecisionDB))
+    decisions_result = await session.execute(
+        select(BoardDecisionDB).where(BoardDecisionDB.user_id == current_user.id)
+    )
     decisions = decisions_result.scalars().all()
 
     # Activity logs
@@ -116,7 +135,7 @@ async def export_all_data(
     logs = logs_result.scalars().all()
 
     export_data = {
-        "exported_at": datetime.utcnow().isoformat(),
+        "exported_at": datetime.now(UTC).isoformat(),
         "app_version": settings.app_version,
         "data_format_version": "1.0",
         "contacts": [
@@ -230,13 +249,14 @@ async def export_all_data(
     return JSONResponse(
         content=export_data,
         headers={
-            "Content-Disposition": f'attachment; filename="therese-export-{datetime.utcnow().strftime("%Y%m%d-%H%M%S")}.json"'
+            "Content-Disposition": f'attachment; filename="therese-export-{datetime.now(UTC).strftime("%Y%m%d-%H%M%S")}.json"'
         },
     )
 
 
 @router.get("/export/conversations")
 async def export_conversations(
+    current_user: CurrentUser,
     format: str = "json",
     session: AsyncSession = Depends(get_session),
 ):
@@ -246,16 +266,21 @@ async def export_conversations(
     Args:
         format: json ou markdown
     """
-    conversations_result = await session.execute(select(Conversation))
+    conversations_result = await session.execute(
+        select(Conversation).where(Conversation.user_id == current_user.id)
+    )
     conversations = conversations_result.scalars().all()
 
-    messages_result = await session.execute(select(Message))
+    conv_ids = [c.id for c in conversations]
+    messages_result = await session.execute(
+        select(Message).where(Message.conversation_id.in_(conv_ids)) if conv_ids else select(Message).where(False)
+    )
     messages = messages_result.scalars().all()
 
     if format == "markdown":
         # Export Markdown
         content = "# Export Conversations THERESE\n\n"
-        content += f"*Exporte le {datetime.utcnow().strftime('%d/%m/%Y a %H:%M')}*\n\n"
+        content += f"*Exporte le {datetime.now(UTC).strftime('%d/%m/%Y a %H:%M')}*\n\n"
         content += "---\n\n"
 
         for conv in conversations:
@@ -274,13 +299,13 @@ async def export_conversations(
         return JSONResponse(
             content={"format": "markdown", "content": content},
             headers={
-                "Content-Disposition": f'attachment; filename="therese-conversations-{datetime.utcnow().strftime("%Y%m%d")}.md"'
+                "Content-Disposition": f'attachment; filename="therese-conversations-{datetime.now(UTC).strftime("%Y%m%d")}.md"'
             },
         )
     else:
         # Export JSON
         data = {
-            "exported_at": datetime.utcnow().isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "conversations": [
                 {
                     "id": conv.id,
@@ -312,6 +337,7 @@ async def export_conversations(
 @router.delete("/all")
 async def delete_all_data(
     confirm: bool = False,
+    current_user: User = RequireAdmin,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -338,33 +364,54 @@ async def delete_all_data(
 
     from sqlalchemy import delete
 
-    # Supprimer dans l'ordre (FK en premier)
-    # -- Tables agents
-    await session.execute(delete(CodeChange))
-    await session.execute(delete(AgentMessage))
-    await session.execute(delete(AgentTask))
+    uid = current_user.id
+
+    # Collecter les IDs des ressources du user pour les tables enfants
+    user_conv_ids = [r[0] for r in (await session.execute(
+        select(Conversation.id).where(Conversation.user_id == uid)
+    )).all()]
+    user_contact_ids = [r[0] for r in (await session.execute(
+        select(Contact.id).where(Contact.user_id == uid)
+    )).all()]
+    user_invoice_ids = [r[0] for r in (await session.execute(
+        select(Invoice.id).where(Invoice.user_id == uid)
+    )).all()]
+    user_project_ids = [r[0] for r in (await session.execute(
+        select(Project.id).where(Project.user_id == uid)
+    )).all()]
+
+    # Supprimer dans l'ordre (FK en premier), scope par user
+    # -- Tables agents (pas de user_id, liees aux conversations)
+    if user_conv_ids:
+        await session.execute(delete(AgentMessage).where(AgentMessage.conversation_id.in_(user_conv_ids)))
+    await session.execute(delete(AgentTask).where(AgentTask.user_id == uid))
+    await session.execute(delete(CodeChange).where(CodeChange.user_id == uid))
     # -- Tables avec FK
-    await session.execute(delete(InvoiceLine))
-    await session.execute(delete(Invoice))
-    await session.execute(delete(CalendarEvent))
-    await session.execute(delete(Calendar))
-    await session.execute(delete(EmailLabel))
-    await session.execute(delete(EmailMessage))
-    await session.execute(delete(EmailAccount))
-    await session.execute(delete(Task))
-    await session.execute(delete(Deliverable))
-    await session.execute(delete(Activity))
-    await session.execute(delete(PromptTemplate))
-    # -- Tables principales (deja presentes)
-    await session.execute(delete(Message))
-    await session.execute(delete(Conversation))
-    await session.execute(delete(Project))
-    await session.execute(delete(Contact))
-    await session.execute(delete(FileMetadata))
-    await session.execute(delete(BoardDecisionDB))
-    # On garde les preferences systeme mais on supprime les API keys
+    if user_invoice_ids:
+        await session.execute(delete(InvoiceLine).where(InvoiceLine.invoice_id.in_(user_invoice_ids)))
+    await session.execute(delete(Invoice).where(Invoice.user_id == uid))
+    await session.execute(delete(CalendarEvent).where(CalendarEvent.user_id == uid))
+    await session.execute(delete(Calendar).where(Calendar.user_id == uid))
+    await session.execute(delete(EmailLabel).where(EmailLabel.user_id == uid))
+    await session.execute(delete(EmailMessage).where(EmailMessage.user_id == uid))
+    await session.execute(delete(EmailAccount).where(EmailAccount.user_id == uid))
+    await session.execute(delete(Task).where(Task.user_id == uid))
+    if user_project_ids:
+        await session.execute(delete(Deliverable).where(Deliverable.project_id.in_(user_project_ids)))
+    if user_contact_ids:
+        await session.execute(delete(Activity).where(Activity.contact_id.in_(user_contact_ids)))
+    await session.execute(delete(PromptTemplate).where(PromptTemplate.user_id == uid))
+    # -- Tables principales
+    if user_conv_ids:
+        await session.execute(delete(Message).where(Message.conversation_id.in_(user_conv_ids)))
+    await session.execute(delete(Conversation).where(Conversation.user_id == uid))
+    await session.execute(delete(Project).where(Project.user_id == uid))
+    await session.execute(delete(Contact).where(Contact.user_id == uid))
+    await session.execute(delete(FileMetadata).where(FileMetadata.user_id == uid))
+    await session.execute(delete(BoardDecisionDB).where(BoardDecisionDB.user_id == uid))
+    # Preferences du user uniquement
     await session.execute(
-        delete(Preference).where(Preference.key.contains("api_key"))
+        delete(Preference).where(Preference.user_id == uid)
     )
     # On garde les logs d'audit (trace legale)
 
@@ -377,7 +424,7 @@ async def delete_all_data(
         qdrant = get_qdrant_service()
         if qdrant.client:
             qdrant.client.delete_collection(settings.qdrant_collection)
-    except Exception:
+    except (RuntimeError, OSError):
         logger.warning("Impossible de purger la collection Qdrant")
 
     logger.warning("Toutes les donnees utilisateur ont ete supprimees (RGPD)")
@@ -396,6 +443,7 @@ async def delete_all_data(
 
 @router.get("/logs")
 async def get_activity_logs(
+    current_user: CurrentUser,
     action: str | None = None,
     resource_type: str | None = None,
     limit: int = 100,
@@ -453,7 +501,7 @@ async def get_activity_logs(
 
 
 @router.get("/logs/actions")
-async def get_available_actions():
+async def get_available_actions(current_user: CurrentUser):
     """Liste les types d'actions disponibles pour le filtrage."""
     return {
         "actions": [action.value for action in AuditAction],
@@ -477,6 +525,7 @@ async def get_available_actions():
 @router.delete("/logs")
 async def cleanup_old_logs(
     days: int = 90,
+    current_user: User = RequireAdmin,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -501,6 +550,7 @@ async def cleanup_old_logs(
 
 @router.post("/backup")
 async def create_backup(
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -516,7 +566,7 @@ async def create_backup(
     backup_dir.mkdir(parents=True, exist_ok=True)
 
     # Create timestamped backup
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     backup_name = f"therese_backup_{timestamp}"
 
     # Copy database file
@@ -526,7 +576,7 @@ async def create_backup(
 
     # Create backup metadata
     metadata = {
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
         "app_version": settings.app_version,
         "db_path": str(backup_db_path),
         "backup_name": backup_name,
@@ -555,7 +605,7 @@ async def create_backup(
 
 
 @router.get("/backups")
-async def list_backups():
+async def list_backups(current_user: CurrentUser):
     """
     List available backups (US-BAK-04).
     """
@@ -580,7 +630,7 @@ async def list_backups():
                 metadata["exists"] = False
 
             backups.append(metadata)
-        except Exception:
+        except (OSError, ValueError, KeyError):
             continue
 
     # Sort by date, most recent first
@@ -593,6 +643,7 @@ async def list_backups():
 async def restore_backup(
     backup_name: str,
     confirm: bool = False,
+    current_user: User = RequireAdmin,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -630,14 +681,14 @@ async def restore_backup(
         raise HTTPException(status_code=404, detail=f"Backup '{backup_name}' non trouve")
 
     # Create a backup of current state before restore
-    current_backup_name = f"pre_restore_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}"
+    current_backup_name = f"pre_restore_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}"
     current_backup_path = backup_dir / f"{current_backup_name}.db"
     shutil.copy2(settings.db_path, current_backup_path)
 
     # Restore from backup
     try:
         shutil.copy2(backup_db, settings.db_path)
-    except Exception as e:
+    except OSError as e:
         # Rollback
         shutil.copy2(current_backup_path, settings.db_path)
         raise HTTPException(
@@ -654,7 +705,7 @@ async def restore_backup(
     return {
         "success": True,
         "restored_from": backup_name,
-        "restored_at": datetime.utcnow().isoformat(),
+        "restored_at": datetime.now(UTC).isoformat(),
         "backup_metadata": metadata,
         "safety_backup": current_backup_name,
         "note": "Redemarrez l'application pour appliquer les changements",
@@ -662,7 +713,7 @@ async def restore_backup(
 
 
 @router.delete("/backups/{backup_name}")
-async def delete_backup(backup_name: str):
+async def delete_backup(backup_name: str, current_user: User = RequireAdmin):
     """Delete a backup."""
     from pathlib import Path
 
@@ -697,6 +748,7 @@ async def delete_backup(backup_name: str):
 @router.post("/import/conversations")
 async def import_conversations(
     data: dict,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -722,6 +774,8 @@ async def import_conversations(
             id=conv_data.get("id"),  # Preserve ID if provided
             title=conv_data.get("title"),
             summary=conv_data.get("summary"),
+            user_id=current_user.id,
+            org_id=current_user.org_id,
         )
         session.add(conversation)
         await session.flush()
@@ -748,6 +802,7 @@ async def import_conversations(
 @router.post("/import/contacts")
 async def import_contacts(
     data: dict,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -775,6 +830,8 @@ async def import_contacts(
             phone=contact_data.get("phone"),
             notes=contact_data.get("notes"),
             tags=json.dumps(contact_data.get("tags")) if contact_data.get("tags") else None,
+            user_id=current_user.id,
+            org_id=current_user.org_id,
         )
         session.add(contact)
         imported += 1
@@ -785,7 +842,7 @@ async def import_contacts(
 
 
 @router.get("/backup/status")
-async def get_backup_status():
+async def get_backup_status(current_user: CurrentUser):
     """
     Get backup status and recommendations.
     """
@@ -819,7 +876,7 @@ async def get_backup_status():
             if latest_time is None or created > latest_time:
                 latest_time = created
                 latest = metadata
-        except Exception:
+        except (OSError, ValueError, KeyError):
             continue
 
     if not latest:
@@ -832,7 +889,7 @@ async def get_backup_status():
     # Check if backup is recent
     if latest_time.tzinfo is None:
         latest_time = latest_time.replace(tzinfo=UTC)
-    age_days = (datetime.utcnow() - latest_time).days
+    age_days = (datetime.now(UTC) - latest_time).days
     recommendation = None
 
     if age_days > 7:

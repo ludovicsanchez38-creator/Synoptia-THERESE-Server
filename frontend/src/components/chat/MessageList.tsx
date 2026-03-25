@@ -42,7 +42,7 @@ export default function MessageList() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+    <div aria-live="polite" className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
       {messages.length === 0 && (
         <p className="text-center text-[var(--color-muted)] text-sm py-8">
           Aucun message. Commencez la conversation !

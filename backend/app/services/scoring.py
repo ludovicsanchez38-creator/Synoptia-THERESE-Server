@@ -8,9 +8,10 @@ Phase 5 - CRM Features
 import logging
 from datetime import UTC, datetime
 
-from app.models.entities import Activity, Contact
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.entities import Activity, Contact
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ def calculate_base_score(contact: Contact) -> int:
         last = contact.last_interaction
         if last.tzinfo is None:
             last = last.replace(tzinfo=UTC)
-        days_inactive = (datetime.utcnow() - last).days
+        days_inactive = (datetime.now(UTC) - last).days
         if days_inactive >= 30:
             # -5 points tous les 30 jours
             decay_count = days_inactive // 30
@@ -105,7 +106,7 @@ async def update_contact_score(session: AsyncSession, contact: Contact, reason: 
 
     if old_score != new_score:
         contact.score = new_score
-        contact.updated_at = datetime.utcnow()
+        contact.updated_at = datetime.now(UTC)
         session.add(contact)
 
         # Créer une activité

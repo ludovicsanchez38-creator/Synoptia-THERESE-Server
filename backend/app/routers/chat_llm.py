@@ -10,16 +10,17 @@ import logging
 from datetime import UTC, datetime
 from typing import AsyncGenerator
 
-from app.auth.rbac import CurrentUser
-from app.auth.tenant import get_owned
-from app.config import settings
-from app.models.database import get_session
-from app.models.entities import Conversation, Message
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+from app.auth.rbac import CurrentUser
+from app.auth.tenant import get_owned
+from app.config import settings
+from app.models.database import get_session
+from app.models.entities import Conversation, Message
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -106,7 +107,7 @@ async def _get_llm_response(
                 async for text in stream.text_stream:
                     yield text
             return
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         logger.warning("Anthropic error: %s", e)
 
     # Essayer OpenAI
@@ -137,7 +138,7 @@ async def _get_llm_response(
                 if chunk.choices and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
             return
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         logger.warning("OpenAI error: %s", e)
 
 
@@ -164,7 +165,7 @@ async def _get_llm_response(
                 if chunk.text:
                     yield chunk.text
             return
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         logger.warning("Google Gemini error: %s", e)
 
     # Essayer Ollama (local)
@@ -195,7 +196,7 @@ async def _get_llm_response(
                             if "message" in data and "content" in data["message"]:
                                 yield data["message"]["content"]
                     return
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, httpx.HTTPError) as e:
         logger.warning("Ollama error: %s", e)
 
     # Aucun provider disponible
@@ -225,7 +226,7 @@ async def send_message_stream(
         content=data.message,
     )
     session.add(user_msg)
-    conversation.updated_at = datetime.utcnow()
+    conversation.updated_at = datetime.now(UTC)
     session.add(conversation)
     await session.commit()
 
@@ -248,7 +249,7 @@ async def send_message_stream(
                 full_response.append(chunk)
                 sse_data = json.dumps({"type": "chunk", "content": chunk})
                 yield f"data: {sse_data}\n\n"
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error("LLM streaming error: %s", e)
             err_data = json.dumps({"type": "error", "content": str(e)})
             yield f"data: {err_data}\n\n"
@@ -268,7 +269,7 @@ async def send_message_stream(
                     )
                     save_session.add(assistant_msg)
                     await save_session.commit()
-            except Exception as e:
+            except (OSError, ValueError, RuntimeError) as e:
                 logger.error("Error saving assistant message: %s", e)
 
         done_data = json.dumps({"type": "done", "content": ""})

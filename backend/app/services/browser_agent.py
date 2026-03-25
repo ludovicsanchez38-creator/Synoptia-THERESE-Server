@@ -57,7 +57,7 @@ def _validate_url(url: str) -> str | None:
 
     try:
         parsed = urlparse(url)
-    except Exception:
+    except ValueError:
         return f"URL invalide : {url}"
 
     if not parsed.scheme:
@@ -132,7 +132,7 @@ class BrowserAgent:
         if self._browser:
             try:
                 await self._browser.close()
-            except Exception as e:
+            except OSError as e:
                 logger.warning(f"Erreur fermeture browser : {e}")
             self._browser = None
             self._page = None
@@ -140,7 +140,7 @@ class BrowserAgent:
         if self._playwright:
             try:
                 await self._playwright.stop()
-            except Exception as e:
+            except OSError as e:
                 logger.warning(f"Erreur arrêt Playwright : {e}")
             self._playwright = None
 
@@ -185,7 +185,7 @@ class BrowserAgent:
                 title=title,
                 content=content,
             )
-        except Exception as e:
+        except (OSError, ValueError, TimeoutError) as e:
             logger.error(f"Erreur navigation vers {url} : {e}")
             return BrowserResult(
                 success=False,
@@ -210,7 +210,7 @@ class BrowserAgent:
                 title=title,
                 content=content,
             )
-        except Exception as e:
+        except (OSError, ValueError, TimeoutError) as e:
             logger.error(f"Erreur extraction texte (sélecteur={selector}) : {e}")
             return BrowserResult(
                 success=False,
@@ -238,7 +238,7 @@ class BrowserAgent:
                 title=title,
                 screenshot_path=str(filepath),
             )
-        except Exception as e:
+        except (OSError, ValueError, TimeoutError) as e:
             logger.error(f"Erreur screenshot : {e}")
             return BrowserResult(
                 success=False,
@@ -263,7 +263,7 @@ class BrowserAgent:
                 title=title,
                 content=f"Clic effectué sur '{selector}'",
             )
-        except Exception as e:
+        except (OSError, ValueError, TimeoutError) as e:
             logger.error(f"Erreur clic sur '{selector}' : {e}")
             return BrowserResult(
                 success=False,
@@ -286,7 +286,7 @@ class BrowserAgent:
                 title=title,
                 content=f"Champ '{selector}' rempli",
             )
-        except Exception as e:
+        except (OSError, ValueError, TimeoutError) as e:
             logger.error(f"Erreur remplissage '{selector}' : {e}")
             return BrowserResult(
                 success=False,
@@ -319,7 +319,7 @@ class BrowserAgent:
                 content=f"{len(links_data)} lien(s) trouvé(s)",
                 links=links_data,
             )
-        except Exception as e:
+        except (OSError, ValueError, TimeoutError) as e:
             logger.error(f"Erreur extraction des liens : {e}")
             return BrowserResult(
                 success=False,

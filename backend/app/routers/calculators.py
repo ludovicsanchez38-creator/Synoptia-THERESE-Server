@@ -6,6 +6,8 @@ API endpoints pour les calculateurs financiers et décisionnels.
 
 import logging
 
+from fastapi import APIRouter, HTTPException
+
 from app.models.schemas_calculators import (
     BreakEvenRequest,
     BreakEvenResponse,
@@ -19,7 +21,6 @@ from app.models.schemas_calculators import (
     ROIResponse,
 )
 from app.services.calculators import get_calculator_service
-from fastapi import APIRouter, HTTPException
 
 logger = logging.getLogger(__name__)
 

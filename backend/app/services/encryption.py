@@ -39,7 +39,7 @@ def _try_keyring_available() -> bool:
         backend = keyring.get_keyring()
         # Exclude fail backend
         return "fail" not in backend.__class__.__name__.lower()
-    except Exception:
+    except (ImportError, RuntimeError):
         return False
 
 
@@ -116,11 +116,11 @@ class EncryptionService:
                                 )
                                 self._using_keychain = True
                                 return file_key
-                            except Exception as e:
+                            except (ImportError, OSError) as e:
                                 logger.warning(f"Restauration Keychain echouee: {e}")
                                 # Utiliser quand meme la cle fichier
                                 return file_key
-                    except Exception as e:
+                    except OSError as e:
                         logger.debug(f"Lecture fichier backup echouee: {e}")
 
                 # Keychain OK, synchroniser le fichier backup
@@ -152,7 +152,7 @@ class EncryptionService:
             if key_str:
                 logger.debug("Cle chargee depuis le keychain")
                 return key_str.encode("utf-8")
-        except Exception as e:
+        except (ImportError, OSError) as e:
             logger.debug(f"Keychain non disponible: {e}")
         return None
 
@@ -167,7 +167,7 @@ class EncryptionService:
             self._write_key_backup(key)
             logger.info("Nouvelle cle generee dans le keychain + fichier backup")
             return key
-        except Exception as e:
+        except (ImportError, OSError) as e:
             logger.warning(f"Impossible de stocker dans le keychain: {e}")
         return None
 
@@ -185,7 +185,7 @@ class EncryptionService:
             finally:
                 os.close(fd)
             logger.debug("Fichier backup cle ecrit: %s", KEY_FILE)
-        except Exception as e:
+        except OSError as e:
             logger.warning(f"Impossible d'ecrire le fichier backup cle: {e}")
 
     def _migrate_key_to_keychain(self) -> bytes | None:
@@ -205,7 +205,7 @@ class EncryptionService:
 
             logger.info("Cle migree du fichier vers le keychain (fichier backup conserve)")
             return key
-        except Exception as e:
+        except (ImportError, OSError) as e:
             logger.warning(f"Migration vers keychain echouee: {e}")
         return None
 
@@ -308,7 +308,7 @@ class EncryptionService:
         except InvalidToken:
             logger.warning("Echec du dechiffrement - token invalide")
             raise
-        except Exception as e:
+        except (ValueError, UnicodeDecodeError) as e:
             logger.error(f"Erreur de dechiffrement: {e}")
             raise
 
@@ -326,7 +326,7 @@ class EncryptionService:
         try:
             decoded = base64.urlsafe_b64decode(value.encode("utf-8"))
             return decoded.startswith(b"gAAAAA") or len(decoded) > 50
-        except Exception:
+        except (ValueError, UnicodeDecodeError):
             return False
 
     def rotate_key(self) -> bytes | None:
@@ -353,7 +353,7 @@ class EncryptionService:
                 new_key = Fernet.generate_key()
                 keyring.set_password(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT, new_key.decode("utf-8"))
                 self._fernet = Fernet(new_key)
-            except Exception as e:
+            except (ImportError, OSError) as e:
                 logger.error(f"Erreur rotation cle keychain: {e}")
                 raise
         else:

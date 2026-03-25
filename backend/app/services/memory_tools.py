@@ -10,9 +10,10 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.entities import Contact, Project
 from app.services.qdrant import get_qdrant_service
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +138,7 @@ async def execute_create_contact(
             phone=arguments.get("phone"),
             role=arguments.get("role"),
             notes=arguments.get("notes"),
-            last_interaction=datetime.utcnow(),
+            last_interaction=datetime.now(UTC),
         )
         session.add(contact)
         await session.flush()
@@ -167,7 +168,7 @@ async def execute_create_contact(
                     "email": contact.email,
                 },
             )
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logger.warning(f"Failed to embed new contact in Qdrant: {e}")
 
         await session.commit()
@@ -180,7 +181,7 @@ async def execute_create_contact(
             "message": f"Contact '{contact.display_name}' cree avec succes.",
         }, ensure_ascii=False)
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to create contact via tool: {e}")
         await session.rollback()
         return json.dumps({
@@ -236,7 +237,7 @@ async def execute_create_project(
                     "budget": project.budget,
                 },
             )
-        except Exception as e:
+        except (RuntimeError, OSError, ValueError) as e:
             logger.warning(f"Failed to embed new project in Qdrant: {e}")
 
         await session.commit()
@@ -249,7 +250,7 @@ async def execute_create_project(
             "message": f"Projet '{project.name}' cree avec succes.",
         }, ensure_ascii=False)
 
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError) as e:
         logger.error(f"Failed to create project via tool: {e}")
         await session.rollback()
         return json.dumps({

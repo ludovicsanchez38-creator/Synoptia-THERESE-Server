@@ -10,6 +10,9 @@ import logging
 from datetime import UTC, date, datetime
 
 import pytz
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
 from app.models.entities import Calendar, CalendarEvent, generate_uuid
 from app.services.calendar.base_provider import (
     CalendarDTO,
@@ -18,8 +21,6 @@ from app.services.calendar.base_provider import (
     CreateEventRequest,
     UpdateEventRequest,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +136,7 @@ class LocalCalendarProvider(CalendarProvider):
             except pytz.UnknownTimeZoneError:
                 pass  # Keep existing timezone
 
-        calendar.updated_at = datetime.utcnow()
+        calendar.updated_at = datetime.now(UTC)
 
         self._session.add(calendar)
         await self._session.commit()
@@ -312,7 +313,7 @@ class LocalCalendarProvider(CalendarProvider):
             import json
             event.attendees = json.dumps(request.attendees) if request.attendees else None
 
-        event.synced_at = datetime.utcnow()
+        event.synced_at = datetime.now(UTC)
 
         self._session.add(event)
         await self._session.commit()

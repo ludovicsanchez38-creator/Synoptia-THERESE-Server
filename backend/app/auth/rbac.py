@@ -8,11 +8,12 @@ import json
 import logging
 from typing import Annotated
 
+from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.auth.backend import decode_access_token, get_user_by_id, log_audit
 from app.auth.models import User, UserRole
 from app.models.database import get_session
-from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 

@@ -7,6 +7,10 @@ US-PERF-01 to US-PERF-05.
 
 import logging
 
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import func, select
+
 from app.models.database import get_session
 from app.models.entities import Conversation, Message
 from app.services.performance import (
@@ -17,9 +21,6 @@ from app.services.performance import (
     get_search_index,
     set_power_settings,
 )
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import func, select
 
 logger = logging.getLogger(__name__)
 

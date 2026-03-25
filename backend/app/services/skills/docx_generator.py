@@ -9,11 +9,12 @@ import logging
 import re
 from pathlib import Path
 
-from app.services.skills.base import FileFormat, SkillParams, SkillResult
-from app.services.skills.code_executor import CodeGenSkill
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, RGBColor
+
+from app.services.skills.base import FileFormat, SkillParams, SkillResult
+from app.services.skills.code_executor import CodeGenSkill
 
 logger = logging.getLogger(__name__)
 

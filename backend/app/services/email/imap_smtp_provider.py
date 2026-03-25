@@ -14,6 +14,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import aiosmtplib
+from imap_tools import AND, OR, MailBox, MailMessage
+
 from app.services.email.base_provider import (
     EmailAttachmentDTO,
     EmailFolderDTO,
@@ -21,7 +23,6 @@ from app.services.email.base_provider import (
     EmailProvider,
     SendEmailRequest,
 )
-from imap_tools import AND, OR, MailBox, MailMessage
 
 logger = logging.getLogger(__name__)
 
@@ -199,7 +200,7 @@ class ImapSmtpProvider(EmailProvider):
         )
 
         # Return a generated ID (SMTP doesn't return one)
-        return f"sent_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        return f"sent_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
 
     async def create_draft(self, request: SendEmailRequest) -> str:
         """Create a draft in IMAP Drafts folder."""
@@ -233,7 +234,7 @@ class ImapSmtpProvider(EmailProvider):
                 # Append to Drafts
                 mailbox.append(msg.as_bytes(), drafts_folder, dt=datetime.now())
 
-            return f"draft_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+            return f"draft_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
 
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, _sync_create)
@@ -338,7 +339,7 @@ class ImapSmtpProvider(EmailProvider):
                             path=folder_info.name,
                             delimiter=folder_info.delim,
                         ))
-                    except Exception:
+                    except (OSError, ValueError, KeyError):
                         # Folder exists but can't be selected (e.g., parent folder)
                         folders.append(EmailFolderDTO(
                             id=folder_info.name,
@@ -438,7 +439,7 @@ class ImapSmtpProvider(EmailProvider):
                     self._email, self._password
                 ):
                     return {"ok": True, "message": "IMAP OK"}
-            except Exception as e:
+            except (OSError, ValueError, RuntimeError) as e:
                 logger.error(f"IMAP connection test failed: {e}")
                 return {"ok": False, "message": f"IMAP : {e}"}
 
@@ -466,7 +467,7 @@ class ImapSmtpProvider(EmailProvider):
             smtp_result = {"ok": True, "message": "SMTP OK"}
         except asyncio.TimeoutError:
             smtp_result = {"ok": False, "message": "SMTP : délai de connexion dépassé (15s)"}
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"SMTP connection test failed: {e}")
             smtp_result = {"ok": False, "message": f"SMTP : {e}"}
 

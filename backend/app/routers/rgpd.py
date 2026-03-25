@@ -12,8 +12,29 @@ import json
 import logging
 from datetime import UTC, datetime, timedelta
 
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
+from app.auth.backend import log_audit
+from app.auth.rbac import CurrentUser
 from app.models.database import get_session
-from app.models.entities import Activity, Contact, Conversation, Deliverable, Message, Project, Task
+from app.models.entities import (
+    Activity,
+    BoardDecisionDB,
+    Contact,
+    Conversation,
+    Deliverable,
+    FileMetadata,
+    Invoice,
+    InvoiceLine,
+    Message,
+    Preference,
+    Project,
+    PromptTemplate,
+    Task,
+)
 from app.models.schemas import (
     RGPDAnonymizeRequest,
     RGPDAnonymizeResponse,
@@ -22,10 +43,6 @@ from app.models.schemas import (
     RGPDStatsResponse,
     RGPDUpdateRequest,
 )
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +57,7 @@ router = APIRouter(tags=["rgpd"])
 @router.get("/export/{contact_id}", response_model=RGPDExportResponse)
 async def export_contact_data(
     contact_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -51,9 +69,9 @@ async def export_contact_data(
     - Projets associés
     - Tâches associées
     """
-    # Get contact
+    # Get contact (scope par user)
     result = await session.execute(
-        select(Contact).where(Contact.id == contact_id)
+        select(Contact).where(Contact.id == contact_id, Contact.user_id == current_user.id)
     )
     contact = result.scalar_one_or_none()
 
@@ -145,7 +163,7 @@ async def export_contact_data(
         activities=activities_data,
         projects=projects_data,
         tasks=tasks_data,
-        exported_at=datetime.utcnow(),
+        exported_at=datetime.now(UTC),
     )
 
 
@@ -158,6 +176,7 @@ async def export_contact_data(
 async def anonymize_contact(
     contact_id: str,
     request: RGPDAnonymizeRequest,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -170,7 +189,7 @@ async def anonymize_contact(
     - Log l'action avec la raison
     """
     result = await session.execute(
-        select(Contact).where(Contact.id == contact_id)
+        select(Contact).where(Contact.id == contact_id, Contact.user_id == current_user.id)
     )
     contact = result.scalar_one_or_none()
 
@@ -187,7 +206,7 @@ async def anonymize_contact(
     contact.company = "[ANONYMISÉ]"
     contact.stage = "archive"
     contact.extra_data = None
-    contact.updated_at = datetime.utcnow()
+    contact.updated_at = datetime.now(UTC)
 
     # Delete activities
     result = await session.execute(
@@ -248,6 +267,7 @@ async def anonymize_contact(
 @router.post("/renew-consent/{contact_id}", response_model=RGPDRenewConsentResponse)
 async def renew_consent(
     contact_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -259,14 +279,14 @@ async def renew_consent(
     - Définit la base légale comme "consentement"
     """
     result = await session.execute(
-        select(Contact).where(Contact.id == contact_id)
+        select(Contact).where(Contact.id == contact_id, Contact.user_id == current_user.id)
     )
     contact = result.scalar_one_or_none()
 
     if not contact:
         raise HTTPException(status_code=404, detail="Contact non trouvé")
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     new_expiration = now + timedelta(days=3 * 365)  # 3 ans
 
     contact.rgpd_base_legale = "consentement"
@@ -304,6 +324,7 @@ async def renew_consent(
 async def update_rgpd_fields(
     contact_id: str,
     request: RGPDUpdateRequest,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -335,13 +356,13 @@ async def update_rgpd_fields(
 
     # Auto-set dates if not set
     if contact.rgpd_date_collecte is None:
-        contact.rgpd_date_collecte = contact.created_at or datetime.utcnow()
+        contact.rgpd_date_collecte = contact.created_at or datetime.now(UTC)
 
     if contact.rgpd_date_expiration is None:
-        base_date = contact.rgpd_date_collecte or datetime.utcnow()
+        base_date = contact.rgpd_date_collecte or datetime.now(UTC)
         contact.rgpd_date_expiration = base_date + timedelta(days=3 * 365)
 
-    contact.updated_at = datetime.utcnow()
+    contact.updated_at = datetime.now(UTC)
 
     await session.commit()
 
@@ -357,6 +378,7 @@ async def update_rgpd_fields(
 
 @router.get("/stats", response_model=RGPDStatsResponse)
 async def get_rgpd_stats(
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -383,7 +405,7 @@ async def get_rgpd_stats(
     expires_ou_bientot = 0
     avec_consentement = 0
 
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     seuil_30j = now + timedelta(days=30)
 
     for contact in contacts:
@@ -427,6 +449,7 @@ async def get_rgpd_stats(
 @router.post("/infer/{contact_id}", response_model=dict)
 async def infer_rgpd_base_legale(
     contact_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -454,7 +477,7 @@ async def infer_rgpd_base_legale(
         base_legale = "interet_legitime"
 
     # Set dates if not set
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     if not contact.rgpd_date_collecte:
         contact.rgpd_date_collecte = contact.created_at or now
 
@@ -486,17 +509,6 @@ async def infer_rgpd_base_legale(
 # Endpoints proteges par authentification JWT
 # ============================================================
 
-
-from app.auth.rbac import CurrentUser
-from app.auth.backend import log_audit
-from app.models.entities import (
-    BoardDecisionDB,
-    FileMetadata,
-    Preference,
-    PromptTemplate,
-    Invoice,
-    InvoiceLine,
-)
 
 
 
@@ -652,7 +664,7 @@ async def export_user_data(
         tasks=tasks_data,
         files=files_data,
         preferences=prefs_data,
-        exported_at=datetime.utcnow(),
+        exported_at=datetime.now(UTC),
     )
 
 

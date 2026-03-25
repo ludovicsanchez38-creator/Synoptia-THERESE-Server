@@ -21,6 +21,8 @@ export interface UserItem {
   role: string;
   is_active: boolean;
   is_verified: boolean;
+  charter_accepted: boolean;
+  charter_accepted_at: string | null;
   last_login: string | null;
   created_at: string | null;
 }

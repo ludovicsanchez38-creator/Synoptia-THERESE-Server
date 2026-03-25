@@ -8,10 +8,11 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from app.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import Session, SQLModel, create_engine
+
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +94,8 @@ async def init_db() -> None:
     )
 
     # Import models to register them
-    from app.models import entities  # noqa: F401
     from app.auth import models as auth_models  # noqa: F401
+    from app.models import entities  # noqa: F401
 
     # Create tables
     SQLModel.metadata.create_all(sync_engine)

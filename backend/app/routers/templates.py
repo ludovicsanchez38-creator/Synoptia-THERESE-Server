@@ -7,15 +7,16 @@ CRUD + seed de modeles de prompts pour collectivites et PME.
 import logging
 from datetime import UTC, datetime
 
-from app.auth.models import User
-from app.auth.rbac import CurrentUser, RequireAdmin
-from app.auth.tenant import get_owned, scope_query_org, set_owner
-from app.models.database import get_session
-from app.models.entities import PromptTemplate
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import or_, select
+
+from app.auth.models import User
+from app.auth.rbac import CurrentUser, RequireAdmin
+from app.auth.tenant import get_owned, set_owner
+from app.models.database import get_session
+from app.models.entities import PromptTemplate
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -307,7 +308,7 @@ async def update_template(
     if body.icon is not None:
         template.icon = body.icon
 
-    template.updated_at = datetime.utcnow()
+    template.updated_at = datetime.now(UTC)
     session.add(template)
     await session.commit()
     await session.refresh(template)

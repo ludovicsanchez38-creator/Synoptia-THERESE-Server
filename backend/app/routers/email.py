@@ -13,6 +13,12 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
 from app.models.database import get_session
 from app.models.entities import EmailAccount, EmailMessage
 from app.models.schemas_email import (
@@ -44,10 +50,6 @@ from app.services.oauth import (
     OAuthConfig,
     get_oauth_service,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +164,7 @@ async def ensure_valid_access_token(
 
         except HTTPException:
             raise
-        except Exception as e:
+        except (httpx.HTTPError, ValueError, OSError) as e:
             logger.error(f"Failed to refresh token: {e}")
             raise HTTPException(
                 status_code=401,
@@ -407,7 +409,7 @@ async def handle_oauth_redirect(
         .email{{color:#22D3EE;font-weight:600}}</style></head>
         <body><div class="card"><h1>Connexion réussie !</h1><p>Le compte <span class="email">{html.escape(email_address)}</span> est connecté à THERESE.</p><p>Tu peux fermer cette fenêtre.</p></div></body></html>
         """)
-    except Exception as e:
+    except (ValueError, OSError, RuntimeError, httpx.HTTPError) as e:
         logger.error(f"OAuth redirect callback failed: {e}")
         return HTMLResponse(content=f"""
         <!DOCTYPE html>
@@ -460,7 +462,7 @@ async def reauthorize_account(
                         client_id = cid
                         client_secret = csecret
                         break
-        except Exception as e:
+        except (ValueError, OSError, RuntimeError) as e:
             logger.warning(f"Failed to get MCP credentials: {e}")
 
     if not client_id or not client_secret:
@@ -579,7 +581,7 @@ async def disconnect_account(
                     f"OAuth revocation returned {revoke_response.status_code} for {account.email}. "
                     f"Continuing with account deletion."
                 )
-        except Exception as e:
+        except (httpx.HTTPError, OSError, ValueError) as e:
             # Ne pas bloquer la deconnexion si la revocation echoue
             logger.warning(f"Failed to revoke OAuth token for {account.email}: {e}. Continuing with deletion.")
 
@@ -684,7 +686,7 @@ async def test_email_connection(
         )
         result = await provider.test_connection()
         return result
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         logger.error(f"Connection test failed: {e}")
         return {
             "success": False,
@@ -776,7 +778,7 @@ async def _list_messages_gmail(
                     'is_read': 'UNREAD' not in label_ids_msg,
                     'is_starred': 'STARRED' in label_ids_msg,
                 }
-            except Exception as e:
+            except (httpx.HTTPError, OSError, KeyError, ValueError) as e:
                 logger.error(f"Failed to get message {msg['id']}: {e}")
                 return {
                     'id': msg['id'],
@@ -1245,7 +1247,7 @@ async def classify_email(
         if results:
             # Assume score 0-100 is stored in metadata
             contact_score = results[0].payload.get('score', None)
-    except Exception as e:
+    except (RuntimeError, OSError, ValueError) as e:
         logger.warning(f"Failed to get CRM score for {message.from_email}: {e}")
 
     # Classify
@@ -1319,7 +1321,7 @@ async def generate_email_response(
 - Score : {payload.get('score', 'N/A')}/100
 - Tags : {payload.get('tags', 'N/A')}
 - Notes : {payload.get('notes', 'N/A')}"""
-    except Exception as e:
+    except (RuntimeError, OSError, ValueError) as e:
         logger.warning(f"Failed to get CRM context for {message.from_email}: {e}")
 
     # Get thread context (previous emails in thread)
@@ -1340,7 +1342,7 @@ async def generate_email_response(
                 thread_lines.append(f"{tm.snippet or tm.body_plain[:200]}")
                 thread_lines.append("---")
             thread_context = "\n".join(thread_lines)
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         logger.warning(f"Failed to get thread context for {message_id}: {e}")
 
     # Generate response

@@ -72,7 +72,7 @@ class AgentToolExecutor:
             if len(lines) > max_lines:
                 return "\n".join(lines[:max_lines]) + f"\n\n[... tronqué à {max_lines} lignes, total: {len(lines)}]"
             return content
-        except Exception as e:
+        except (OSError, UnicodeDecodeError) as e:
             return f"Erreur de lecture : {e}"
 
     async def list_directory(self, dir_path: str = ".", max_entries: int = 100) -> str:
@@ -94,7 +94,7 @@ class AgentToolExecutor:
                 rel = entry.relative_to(self.source_path)
                 lines.append(f"{prefix}{rel}")
             return "\n".join(lines)
-        except Exception as e:
+        except OSError as e:
             return f"Erreur : {e}"
 
     async def search_codebase(self, pattern: str, glob_filter: str = "*.py", max_results: int = 20) -> str:
@@ -118,7 +118,7 @@ class AgentToolExecutor:
             return "\n".join(lines)
         except asyncio.TimeoutError:
             return "Erreur : timeout de recherche"
-        except Exception as e:
+        except OSError as e:
             return f"Erreur de recherche : {e}"
 
     # --- Outils d'écriture (Zézette uniquement) ---
@@ -135,7 +135,7 @@ class AgentToolExecutor:
             return f"Fichier écrit : {file_path} ({len(content)} caractères)"
         except PermissionError as e:
             return f"Permission refusée : {e}"
-        except Exception as e:
+        except OSError as e:
             return f"Erreur d'écriture : {e}"
 
     async def run_command(self, command: str) -> str:
@@ -187,7 +187,7 @@ class AgentToolExecutor:
             return result
         except asyncio.TimeoutError:
             return f"Erreur : timeout (120s) pour '{command}'"
-        except Exception as e:
+        except OSError as e:
             return f"Erreur d'exécution : {e}"
 
     # --- Outils git (Zézette) ---

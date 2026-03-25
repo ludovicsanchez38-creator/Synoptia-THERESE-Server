@@ -9,12 +9,15 @@ import json
 import logging
 from datetime import UTC, datetime
 
-from app.models.database import get_session
-from app.models.entities import Task
-from app.models.schemas import CreateTaskRequest, TaskResponse, UpdateTaskRequest
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+from app.auth.rbac import CurrentUser
+from app.auth.tenant import get_owned, scope_query, set_owner
+from app.models.database import get_session
+from app.models.entities import Task
+from app.models.schemas import CreateTaskRequest, TaskResponse, UpdateTaskRequest
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -27,9 +30,12 @@ logger = logging.getLogger(__name__)
 
 @router.get("/")
 async def list_tasks(
+    current_user: CurrentUser,
     status: str | None = Query(None, description="Filter by status"),
     priority: str | None = Query(None, description="Filter by priority"),
     project_id: str | None = Query(None, description="Filter by project"),
+    skip: int = Query(0, ge=0, description="Offset pagination"),
+    limit: int = Query(50, ge=1, le=200, description="Limite pagination"),
     session: AsyncSession = Depends(get_session),
 ) -> list[TaskResponse]:
     """
@@ -41,6 +47,7 @@ async def list_tasks(
         - project_id: UUID du projet lié
     """
     stmt = select(Task)
+    stmt = scope_query(stmt, Task, current_user)
 
     if status:
         stmt = stmt.where(Task.status == status)
@@ -55,6 +62,8 @@ async def list_tasks(
         Task.priority.desc(),
         Task.due_date.asc(),
     )
+
+    stmt = stmt.offset(skip).limit(limit)
 
     result = await session.execute(stmt)
     tasks = result.scalars().all()
@@ -80,10 +89,11 @@ async def list_tasks(
 @router.get("/{task_id}")
 async def get_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
     """Récupère une tâche spécifique."""
-    task = await session.get(Task, task_id)
+    task = await get_owned(session, Task, task_id, current_user)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -105,6 +115,7 @@ async def get_task(
 @router.post("/")
 async def create_task(
     request: CreateTaskRequest,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
     """Crée une nouvelle tâche."""
@@ -125,9 +136,10 @@ async def create_task(
         due_date=due_date,
         project_id=request.project_id,
         tags=json.dumps(request.tags or []),
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
+    set_owner(task, current_user)
 
     session.add(task)
     await session.commit()
@@ -152,10 +164,11 @@ async def create_task(
 async def update_task(
     task_id: str,
     request: UpdateTaskRequest,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
     """Met à jour une tâche existante."""
-    task = await session.get(Task, task_id)
+    task = await get_owned(session, Task, task_id, current_user)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -168,7 +181,7 @@ async def update_task(
         task.status = request.status
         # Auto-set completed_at when status becomes "done"
         if request.status == "done" and not task.completed_at:
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(UTC)
         elif request.status != "done":
             task.completed_at = None
     if request.priority is not None:
@@ -183,7 +196,7 @@ async def update_task(
     if request.tags is not None:
         task.tags = json.dumps(request.tags)
 
-    task.updated_at = datetime.utcnow()
+    task.updated_at = datetime.now(UTC)
 
     session.add(task)
     await session.commit()
@@ -207,10 +220,11 @@ async def update_task(
 @router.delete("/{task_id}")
 async def delete_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Supprime une tâche."""
-    task = await session.get(Task, task_id)
+    task = await get_owned(session, Task, task_id, current_user)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -228,16 +242,17 @@ async def delete_task(
 @router.patch("/{task_id}/complete")
 async def complete_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
     """Marque une tâche comme complétée."""
-    task = await session.get(Task, task_id)
+    task = await get_owned(session, Task, task_id, current_user)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
     task.status = "done"
-    task.completed_at = datetime.utcnow()
-    task.updated_at = datetime.utcnow()
+    task.completed_at = datetime.now(UTC)
+    task.updated_at = datetime.now(UTC)
 
     session.add(task)
     await session.commit()
@@ -261,16 +276,17 @@ async def complete_task(
 @router.patch("/{task_id}/uncomplete")
 async def uncomplete_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
     """Marque une tâche comme non complétée."""
-    task = await session.get(Task, task_id)
+    task = await get_owned(session, Task, task_id, current_user)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
     task.status = "todo"
     task.completed_at = None
-    task.updated_at = datetime.utcnow()
+    task.updated_at = datetime.now(UTC)
 
     session.add(task)
     await session.commit()

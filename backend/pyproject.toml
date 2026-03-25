@@ -1,8 +1,8 @@
 [project]
 name = "therese-server"
-version = "0.1.0"
+version = "0.2.0"
 description = "Thérèse Server - Assistant IA multi-utilisateurs pour collectivités et PME"
-readme = "README.md"
+readme = "../README.md"
 requires-python = ">=3.11"
 license = { text = "AGPL-3.0-only" }
 authors = [

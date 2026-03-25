@@ -6,11 +6,12 @@ Usage : python -m app.auth.seed
 """
 
 import asyncio
-import sys
+import os
+import secrets
 
 from app.auth.backend import hash_password
 from app.auth.models import Organization, User, UserRole
-from app.models.database import init_db, get_session_context
+from app.models.database import get_session_context, init_db
 
 
 async def seed():
@@ -36,10 +37,17 @@ async def seed():
         session.add(org)
         await session.flush()
 
+        # Mot de passe admin : aléatoire en prod, "admin" en dev
+        environment = os.getenv("ENVIRONMENT", "development").lower()
+        if environment == "production":
+            admin_password = secrets.token_urlsafe(16)
+        else:
+            admin_password = "admin"
+
         # Créer l'administrateur
         admin = User(
             email="admin@therese.local",
-            hashed_password=hash_password("admin"),
+            hashed_password=hash_password(admin_password),
             name="Administrateur",
             role=UserRole.ADMIN.value,
             org_id=org.id,
@@ -51,8 +59,13 @@ async def seed():
         await session.commit()
 
         print(f"Organisation créée : {org.name} (id: {org.id})")
-        print(f"Admin créé : {admin.email} / admin")
-        print("IMPORTANT : changez le mot de passe admin en production !")
+        print(f"Admin créé : {admin.email}")
+        if environment == "production":
+            print(f"Mot de passe admin généré : {admin_password}")
+            print("IMPORTANT : notez ce mot de passe, il ne sera plus affiché !")
+        else:
+            print(f"Mot de passe admin : {admin_password}")
+            print("ATTENTION : ne pas utiliser ce mot de passe en production !")
 
 
 if __name__ == "__main__":

@@ -13,9 +13,9 @@ class TestExportConversations:
     """Tests for US-BAK-01: Export conversations."""
 
     @pytest.mark.asyncio
-    async def test_export_conversations_json(self, async_client: AsyncClient):
+    async def test_export_conversations_json(self, authenticated_client: AsyncClient):
         """Test exporting conversations as JSON."""
-        response = await async_client.get("/api/data/export/conversations?format=json")
+        response = await authenticated_client.get("/api/data/export/conversations?format=json")
         assert response.status_code == 200
 
         data = response.json()
@@ -24,9 +24,9 @@ class TestExportConversations:
         assert isinstance(data["conversations"], list)
 
     @pytest.mark.asyncio
-    async def test_export_conversations_markdown(self, async_client: AsyncClient):
+    async def test_export_conversations_markdown(self, authenticated_client: AsyncClient):
         """Test exporting conversations as Markdown."""
-        response = await async_client.get("/api/data/export/conversations?format=markdown")
+        response = await authenticated_client.get("/api/data/export/conversations?format=markdown")
         assert response.status_code == 200
 
         data = response.json()
@@ -38,7 +38,7 @@ class TestImportData:
     """Tests for US-BAK-02: Import data."""
 
     @pytest.mark.asyncio
-    async def test_import_conversations(self, async_client: AsyncClient):
+    async def test_import_conversations(self, authenticated_client: AsyncClient):
         """Test importing conversations from JSON."""
         import_data = {
             "conversations": [
@@ -53,7 +53,7 @@ class TestImportData:
             ]
         }
 
-        response = await async_client.post(
+        response = await authenticated_client.post(
             "/api/data/import/conversations",
             json=import_data,
         )
@@ -64,7 +64,7 @@ class TestImportData:
         assert data["imported"]["conversations"] >= 0  # May be 0 if already exists
 
     @pytest.mark.asyncio
-    async def test_import_contacts(self, async_client: AsyncClient):
+    async def test_import_contacts(self, authenticated_client: AsyncClient):
         """Test importing contacts from JSON."""
         import_data = {
             "contacts": [
@@ -77,7 +77,7 @@ class TestImportData:
             ]
         }
 
-        response = await async_client.post(
+        response = await authenticated_client.post(
             "/api/data/import/contacts",
             json=import_data,
         )
@@ -87,9 +87,9 @@ class TestImportData:
         assert data["success"] is True
 
     @pytest.mark.asyncio
-    async def test_import_invalid_format(self, async_client: AsyncClient):
+    async def test_import_invalid_format(self, authenticated_client: AsyncClient):
         """Test importing with invalid format."""
-        response = await async_client.post(
+        response = await authenticated_client.post(
             "/api/data/import/conversations",
             json={"invalid": "data"},
         )
@@ -100,9 +100,9 @@ class TestBackupOperations:
     """Tests for US-BAK-03, US-BAK-04: Backup and restore."""
 
     @pytest.mark.asyncio
-    async def test_create_backup(self, async_client: AsyncClient):
+    async def test_create_backup(self, authenticated_client: AsyncClient):
         """Test creating a backup."""
-        response = await async_client.post("/api/data/backup")
+        response = await authenticated_client.post("/api/data/backup")
         assert response.status_code == 200
 
         data = response.json()
@@ -112,9 +112,9 @@ class TestBackupOperations:
         assert "created_at" in data
 
     @pytest.mark.asyncio
-    async def test_list_backups(self, async_client: AsyncClient):
+    async def test_list_backups(self, authenticated_client: AsyncClient):
         """Test listing backups."""
-        response = await async_client.get("/api/data/backups")
+        response = await authenticated_client.get("/api/data/backups")
         assert response.status_code == 200
 
         data = response.json()
@@ -122,9 +122,9 @@ class TestBackupOperations:
         assert isinstance(data["backups"], list)
 
     @pytest.mark.asyncio
-    async def test_backup_status(self, async_client: AsyncClient):
+    async def test_backup_status(self, authenticated_client: AsyncClient):
         """Test getting backup status."""
-        response = await async_client.get("/api/data/backup/status")
+        response = await authenticated_client.get("/api/data/backup/status")
         assert response.status_code == 200
 
         data = response.json()
@@ -132,15 +132,15 @@ class TestBackupOperations:
         assert "last_backup" in data
 
     @pytest.mark.asyncio
-    async def test_restore_requires_confirmation(self, async_client: AsyncClient):
+    async def test_restore_requires_confirmation(self, authenticated_client: AsyncClient):
         """Test that restore requires confirmation."""
-        response = await async_client.post("/api/data/restore/nonexistent")
+        response = await authenticated_client.post("/api/data/restore/nonexistent")
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_restore_nonexistent_backup(self, async_client: AsyncClient):
+    async def test_restore_nonexistent_backup(self, authenticated_client: AsyncClient):
         """Test restoring from nonexistent backup."""
-        response = await async_client.post(
+        response = await authenticated_client.post(
             "/api/data/restore/nonexistent?confirm=true"
         )
         assert response.status_code == 404
@@ -150,9 +150,9 @@ class TestFullDataExport:
     """Tests for complete data export."""
 
     @pytest.mark.asyncio
-    async def test_export_all_data(self, async_client: AsyncClient):
+    async def test_export_all_data(self, authenticated_client: AsyncClient):
         """Test full data export."""
-        response = await async_client.get("/api/data/export")
+        response = await authenticated_client.get("/api/data/export")
         assert response.status_code == 200
 
         data = response.json()
@@ -167,9 +167,9 @@ class TestFullDataExport:
         assert "activity_logs" in data
 
     @pytest.mark.asyncio
-    async def test_export_does_not_include_api_keys(self, async_client: AsyncClient):
+    async def test_export_does_not_include_api_keys(self, authenticated_client: AsyncClient):
         """Test that API keys are not exported."""
-        response = await async_client.get("/api/data/export")
+        response = await authenticated_client.get("/api/data/export")
         assert response.status_code == 200
 
         data = response.json()
@@ -183,15 +183,15 @@ class TestBackupIntegration:
     """Integration tests for backup workflow."""
 
     @pytest.mark.asyncio
-    async def test_full_backup_restore_workflow(self, async_client: AsyncClient):
+    async def test_full_backup_restore_workflow(self, authenticated_client: AsyncClient):
         """Test complete backup and list workflow."""
         # Create a backup
-        create_response = await async_client.post("/api/data/backup")
+        create_response = await authenticated_client.post("/api/data/backup")
         assert create_response.status_code == 200
         backup_name = create_response.json()["backup_name"]
 
         # List backups
-        list_response = await async_client.get("/api/data/backups")
+        list_response = await authenticated_client.get("/api/data/backups")
         assert list_response.status_code == 200
         backups = list_response.json()["backups"]
 
@@ -200,10 +200,10 @@ class TestBackupIntegration:
         assert backup_name in backup_names
 
         # Check backup status
-        status_response = await async_client.get("/api/data/backup/status")
+        status_response = await authenticated_client.get("/api/data/backup/status")
         assert status_response.status_code == 200
         assert status_response.json()["has_backups"] is True
 
         # Clean up - delete the test backup
-        delete_response = await async_client.delete(f"/api/data/backups/{backup_name}")
+        delete_response = await authenticated_client.delete(f"/api/data/backups/{backup_name}")
         assert delete_response.status_code == 200

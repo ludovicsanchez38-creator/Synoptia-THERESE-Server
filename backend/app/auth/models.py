@@ -39,8 +39,8 @@ class Organization(SQLModel, table=True):
     max_tokens_per_day: int = Field(default=100000)
     # Métadonnées
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     users: list["User"] = Relationship(back_populates="organization")
@@ -71,8 +71,8 @@ class User(SQLModel, table=True):
 
     # Métadonnées
     last_login: datetime | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
-    updated_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     # Relationships
     organization: Optional["Organization"] = Relationship(back_populates="users")
@@ -99,7 +99,7 @@ class AuditLog(SQLModel, table=True):
     user_agent: str | None = None
 
     # Timestamp
-    timestamp: datetime = Field(default_factory=lambda: datetime.utcnow(), index=True)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
 
 
 class RefreshToken(SQLModel, table=True):
@@ -112,4 +112,4 @@ class RefreshToken(SQLModel, table=True):
     token: str = Field(unique=True, index=True)
     expires_at: datetime
     revoked: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

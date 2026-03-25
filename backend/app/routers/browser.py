@@ -7,12 +7,14 @@ v0.6 - Inspiré de Manus Browser Operator.
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+
+from app.auth.rbac import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 # --- Schemas de requête ---

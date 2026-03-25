@@ -7,10 +7,11 @@ API endpoints pour gérer les outils installés.
 import logging
 from typing import Any
 
-from app.services.skills.registry import get_skills_registry
-from app.services.skills.tool_installer import get_tool_installer
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+from app.services.skills.registry import get_skills_registry
+from app.services.skills.tool_installer import get_tool_installer
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

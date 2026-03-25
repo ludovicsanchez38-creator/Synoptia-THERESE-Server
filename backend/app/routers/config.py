@@ -5,11 +5,10 @@ Lightweight CRUD for user preferences and LLM model listing.
 No heavy dependencies (encryption, http_client, Ollama probing).
 """
 
-import json
 import logging
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -158,7 +157,7 @@ async def set_preference(
     if pref:
         pref.value = request.value
         pref.category = request.category
-        pref.updated_at = datetime.utcnow()
+        pref.updated_at = datetime.now(UTC)
     else:
         pref = Preference(
             key=key,

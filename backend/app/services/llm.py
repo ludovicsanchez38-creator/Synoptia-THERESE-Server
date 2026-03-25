@@ -35,6 +35,7 @@ from app.services.providers import (
     ToolCall,
     ToolResult,
 )
+from app.services.retry import retry_stream
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +52,10 @@ async def load_api_key_cache() -> None:
     global _api_key_cache, _api_key_cache_loaded
 
     try:
+        from sqlalchemy import text
+
         from app.models.database import get_sync_connection
         from app.services.encryption import get_encryption_service
-        from sqlalchemy import text
 
         with get_sync_connection() as conn:
             result = conn.execute(
@@ -70,7 +72,7 @@ async def load_api_key_cache() -> None:
                     if encryption.is_encrypted(value):
                         try:
                             value = encryption.decrypt(value)
-                        except Exception:
+                        except (ValueError, OSError):
                             logger.warning(f"Decryption failed for {pref_key}, skipping")
                             continue
                     _api_key_cache[pref_key] = value
@@ -78,7 +80,7 @@ async def load_api_key_cache() -> None:
         _api_key_cache_loaded = True
         logger.info(f"API key cache loaded: {len(_api_key_cache)} key(s)")
 
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.warning(f"Could not load API key cache: {e}")
 
 
@@ -99,9 +101,10 @@ def _get_api_key_from_db(provider: str) -> str | None:
         import asyncio
 
         def _sync_read_key():
+            from sqlalchemy import text
+
             from app.models.database import get_sync_connection
             from app.services.encryption import get_encryption_service
-            from sqlalchemy import text
 
             with get_sync_connection() as conn:
                 result = conn.execute(
@@ -115,7 +118,7 @@ def _get_api_key_from_db(provider: str) -> str | None:
                     if encryption.is_encrypted(value):
                         try:
                             value = encryption.decrypt(value)
-                        except Exception as dec_err:
+                        except (ValueError, OSError) as dec_err:
                             logger.error(f"Failed to decrypt {provider} API key: {dec_err}")
                             return None
                     return value
@@ -130,7 +133,7 @@ def _get_api_key_from_db(provider: str) -> str | None:
             return _sync_read_key()
         except RuntimeError:
             return _sync_read_key()
-    except Exception as e:
+    except (OSError, ValueError) as e:
         logger.debug(f"Could not load {provider} API key: {e}")
 
     return None
@@ -164,7 +167,7 @@ def load_therese_md() -> str | None:
                 _therese_md_loaded = True
                 logger.info(f"Loaded THERESE.md from {path}")
                 return content
-            except Exception as e:
+            except OSError as e:
                 logger.warning(f"Failed to read THERESE.md: {e}")
 
     _therese_md_loaded = True
@@ -261,7 +264,7 @@ AUTORISÉ : les listes à puces (- point clé : valeur).
             "janvier", "février", "mars", "avril", "mai", "juin",
             "juillet", "août", "septembre", "octobre", "novembre", "décembre",
         ]
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         day = str(now.day)
         month_fr = _MOIS_FR[now.month - 1]
         current_date = f"{day} {month_fr} {now.strftime('%Y, %H:%M')} UTC"
@@ -290,8 +293,9 @@ AUTORISÉ : les listes à puces (- point clé : valeur).
         selected_provider = None
         selected_model = None
         try:
-            from app.models.database import get_sync_connection
             from sqlalchemy import text
+
+            from app.models.database import get_sync_connection
 
             with get_sync_connection() as conn:
                 for key in ("llm_provider", "llm_model"):
@@ -305,7 +309,7 @@ AUTORISÉ : les listes à puces (- point clé : valeur).
                             selected_provider = row[0]
                         else:
                             selected_model = row[0]
-        except Exception as e:
+        except (OSError, ValueError) as e:
             logger.warning(f"Could not read LLM preferences from DB: {e}")
 
         logger.info(f"LLM preferences from DB: provider={selected_provider}, model={selected_model}")
@@ -452,13 +456,16 @@ AUTORISÉ : les listes à puces (- point clé : valeur).
             messages = context.to_openai_format()
             system_prompt = context.system_prompt
 
-        # Pass enable_grounding to Gemini provider
-        if self.config.provider == LLMProvider.GEMINI:
-            async for event in self._provider.stream(system_prompt, messages, tools, enable_grounding=enable_grounding):
-                yield event
-        else:
-            async for event in self._provider.stream(system_prompt, messages, tools):
-                yield event
+        # Stream avec retry et circuit breaker
+        provider_name = self.config.provider.value if hasattr(self.config.provider, "value") else str(self.config.provider)
+
+        def stream_fn():
+            if self.config.provider == LLMProvider.GEMINI:
+                return self._provider.stream(system_prompt, messages, tools, enable_grounding=enable_grounding)
+            return self._provider.stream(system_prompt, messages, tools)
+
+        async for event in retry_stream(stream_fn, provider_name=provider_name, max_retries=2):
+            yield event
 
     async def continue_with_tool_results(
         self,
@@ -586,8 +593,9 @@ def get_llm_service_for_provider(provider_name: str, model_override: str | None 
     # (sinon on enverrait "claude-opus-4-6" à GPT/Gemini/Grok → crash Board cloud)
     user_model = None
     try:
-        from app.models.database import get_sync_connection
         from sqlalchemy import text
+
+        from app.models.database import get_sync_connection
 
         with get_sync_connection() as conn:
             # Lire le provider principal de l'utilisateur
@@ -604,7 +612,7 @@ def get_llm_service_for_provider(provider_name: str, model_override: str | None 
                 row = result.fetchone()
                 if row and row[0]:
                     user_model = row[0]
-    except Exception:
+    except (OSError, ValueError):
         pass
     model = model_override or user_model or default_model
 

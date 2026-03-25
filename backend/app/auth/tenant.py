@@ -4,9 +4,10 @@ Thérèse Server - Tenant utilities
 Helpers for multi-tenant query scoping.
 """
 
-from app.auth.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import SQLModel, select
+
+from app.auth.models import User
 
 
 def scope_query(stmt, model: type[SQLModel], user: User):
