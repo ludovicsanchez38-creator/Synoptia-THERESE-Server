@@ -13,6 +13,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
+from app.auth.rbac import CurrentUser
+from app.auth.tenant import get_owned, scope_query, set_owner
 from app.models.database import get_session
 from app.models.entities import Task
 from app.models.schemas import CreateTaskRequest, TaskResponse, UpdateTaskRequest
@@ -28,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/")
 async def list_tasks(
+    current_user: CurrentUser,
     status: str | None = Query(None, description="Filter by status"),
     priority: str | None = Query(None, description="Filter by priority"),
     project_id: str | None = Query(None, description="Filter by project"),
@@ -44,6 +47,7 @@ async def list_tasks(
         - project_id: UUID du projet lié
     """
     stmt = select(Task)
+    stmt = scope_query(stmt, Task, current_user)
 
     if status:
         stmt = stmt.where(Task.status == status)
@@ -85,10 +89,11 @@ async def list_tasks(
 @router.get("/{task_id}")
 async def get_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
     """Récupère une tâche spécifique."""
-    task = await session.get(Task, task_id)
+    task = await get_owned(session, Task, task_id, current_user)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -110,6 +115,7 @@ async def get_task(
 @router.post("/")
 async def create_task(
     request: CreateTaskRequest,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
     """Crée une nouvelle tâche."""
@@ -133,6 +139,7 @@ async def create_task(
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
     )
+    set_owner(task, current_user)
 
     session.add(task)
     await session.commit()
@@ -157,10 +164,11 @@ async def create_task(
 async def update_task(
     task_id: str,
     request: UpdateTaskRequest,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
     """Met à jour une tâche existante."""
-    task = await session.get(Task, task_id)
+    task = await get_owned(session, Task, task_id, current_user)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -212,10 +220,11 @@ async def update_task(
 @router.delete("/{task_id}")
 async def delete_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
     """Supprime une tâche."""
-    task = await session.get(Task, task_id)
+    task = await get_owned(session, Task, task_id, current_user)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -233,10 +242,11 @@ async def delete_task(
 @router.patch("/{task_id}/complete")
 async def complete_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
     """Marque une tâche comme complétée."""
-    task = await session.get(Task, task_id)
+    task = await get_owned(session, Task, task_id, current_user)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
@@ -266,10 +276,11 @@ async def complete_task(
 @router.patch("/{task_id}/uncomplete")
 async def uncomplete_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> TaskResponse:
     """Marque une tâche comme non complétée."""
-    task = await session.get(Task, task_id)
+    task = await get_owned(session, Task, task_id, current_user)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 

@@ -8,6 +8,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Query
 
+from app.auth.rbac import CurrentUser
 from app.models.command import (
     CommandDefinitionResponse,
     CreateUserCommandRequest,
@@ -22,6 +23,7 @@ router = APIRouter()
 
 @router.get("", response_model=list[CommandDefinitionResponse])
 async def list_commands(
+    current_user: CurrentUser,
     category: str | None = Query(None, description="Filtrer par catégorie"),
     show_on_home: bool | None = Query(None, description="Filtrer commandes affichées sur l'accueil"),
     show_in_slash: bool | None = Query(None, description="Filtrer commandes dans le menu /"),
@@ -39,7 +41,7 @@ async def list_commands(
 
 
 @router.get("/{command_id}", response_model=CommandDefinitionResponse)
-async def get_command(command_id: str):
+async def get_command(command_id: str, current_user: CurrentUser):
     """Récupère une commande par son ID."""
     registry = get_command_registry()
     cmd = registry.get(command_id)
@@ -49,7 +51,7 @@ async def get_command(command_id: str):
 
 
 @router.get("/{command_id}/schema")
-async def get_command_schema(command_id: str):
+async def get_command_schema(command_id: str, current_user: CurrentUser):
     """Récupère le schéma de formulaire d'une commande (si skill_id)."""
     registry = get_command_registry()
     cmd = registry.get(command_id)
@@ -80,7 +82,7 @@ async def get_command_schema(command_id: str):
 
 
 @router.post("/user", response_model=CommandDefinitionResponse, status_code=201)
-async def create_user_command(request: CreateUserCommandRequest):
+async def create_user_command(request: CreateUserCommandRequest, current_user: CurrentUser):
     """Crée une nouvelle commande utilisateur."""
     registry = get_command_registry()
     try:
@@ -99,7 +101,7 @@ async def create_user_command(request: CreateUserCommandRequest):
 
 
 @router.put("/user/{command_id}", response_model=CommandDefinitionResponse)
-async def update_user_command(command_id: str, request: UpdateUserCommandRequest):
+async def update_user_command(command_id: str, request: UpdateUserCommandRequest, current_user: CurrentUser):
     """Met à jour une commande utilisateur."""
     registry = get_command_registry()
     cmd = await registry.update_user_command(
@@ -118,7 +120,7 @@ async def update_user_command(command_id: str, request: UpdateUserCommandRequest
 
 
 @router.delete("/user/{command_id}")
-async def delete_user_command(command_id: str):
+async def delete_user_command(command_id: str, current_user: CurrentUser):
     """Supprime une commande utilisateur."""
     registry = get_command_registry()
     deleted = await registry.delete_user_command(command_id)
@@ -128,7 +130,7 @@ async def delete_user_command(command_id: str):
 
 
 @router.post("/generate-template")
-async def generate_template(request: GenerateTemplateRequest):
+async def generate_template(request: GenerateTemplateRequest, current_user: CurrentUser):
     """RFC : Génère un template de commande depuis un brief (via LLM)."""
     from app.services.llm import get_llm_service
 

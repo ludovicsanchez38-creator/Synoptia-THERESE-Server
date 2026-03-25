@@ -9,6 +9,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -81,6 +82,22 @@ class Settings(BaseSettings):
 
     # Domain
     domain: str = "localhost"
+
+    @model_validator(mode="after")
+    def check_secrets_in_production(self) -> "Settings":
+        """Bloquer les secrets par défaut en production."""
+        if self.environment == "production":
+            if "changeme" in self.jwt_secret:
+                raise RuntimeError(
+                    "jwt_secret contient 'changeme' - interdit en production. "
+                    "Générez une clé avec : openssl rand -hex 32"
+                )
+            if "changeme" in self.secret_key:
+                raise RuntimeError(
+                    "secret_key contient 'changeme' - interdit en production. "
+                    "Générez une clé avec : openssl rand -hex 32"
+                )
+        return self
 
     def model_post_init(self, __context) -> None:
         """Initialize paths after settings are loaded."""

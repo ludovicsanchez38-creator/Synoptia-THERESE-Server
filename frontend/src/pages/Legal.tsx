@@ -41,7 +41,7 @@ export default function LegalPage() {
       <section className="mb-8">
         <h2 className="text-lg font-semibold mb-2">Politique de confidentialité</h2>
         <ul className="list-disc ml-6 space-y-2">
-          <li>Les conversations avec l'IA sont chiffrées au repos (Fernet AES-128).</li>
+          <li>Les clés API et tokens sont chiffrés au repos (Fernet). Les conversations sont protégées par l'isolation multi-tenant et le contrôle d'accès.</li>
           <li>Les échanges avec les fournisseurs LLM utilisent des connexions HTTPS chiffrées.</li>
           <li>Aucune donnée n'est utilisée pour entraîner des modèles tiers.</li>
           <li>Les logs d'audit enregistrent les actions sensibles (connexion, export, suppression).</li>

@@ -8,6 +8,7 @@ import logging
 
 from fastapi import APIRouter, HTTPException
 
+from app.auth.rbac import CurrentUser
 from app.models.schemas_commands import (
     CommandResponse,
     CreateCommandRequest,
@@ -22,7 +23,7 @@ router = APIRouter()
 # --- Endpoints ---
 
 @router.get("/user", response_model=list[CommandResponse])
-async def list_user_commands():
+async def list_user_commands(current_user: CurrentUser):
     """Liste toutes les commandes utilisateur."""
     service = UserCommandsService.get_instance()
     commands = service.list_commands()
@@ -30,7 +31,7 @@ async def list_user_commands():
 
 
 @router.get("/user/{name}", response_model=CommandResponse)
-async def get_user_command(name: str):
+async def get_user_command(name: str, current_user: CurrentUser):
     """Recupere une commande utilisateur par son nom."""
     service = UserCommandsService.get_instance()
     cmd = service.get_command(name)
@@ -40,7 +41,7 @@ async def get_user_command(name: str):
 
 
 @router.post("/user", response_model=CommandResponse, status_code=201)
-async def create_user_command(request: CreateCommandRequest):
+async def create_user_command(request: CreateCommandRequest, current_user: CurrentUser):
     """Cree une nouvelle commande utilisateur."""
     service = UserCommandsService.get_instance()
     try:
@@ -58,7 +59,7 @@ async def create_user_command(request: CreateCommandRequest):
 
 
 @router.put("/user/{name}", response_model=CommandResponse)
-async def update_user_command(name: str, request: UpdateCommandRequest):
+async def update_user_command(name: str, request: UpdateCommandRequest, current_user: CurrentUser):
     """Met a jour une commande utilisateur."""
     service = UserCommandsService.get_instance()
     cmd = service.update_command(
@@ -75,7 +76,7 @@ async def update_user_command(name: str, request: UpdateCommandRequest):
 
 
 @router.delete("/user/{name}")
-async def delete_user_command(name: str):
+async def delete_user_command(name: str, current_user: CurrentUser):
     """Supprime une commande utilisateur."""
     service = UserCommandsService.get_instance()
     deleted = service.delete_command(name)
