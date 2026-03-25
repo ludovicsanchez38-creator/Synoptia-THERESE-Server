@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import NavBar from "../components/NavBar";
+import { Button, Input, Select, Badge } from "../components/ui";
 import {
   fetchTasks,
   createTask,
@@ -129,12 +130,9 @@ export default function TasksPage() {
           <h2 className="text-xl font-bold text-[var(--color-text)]">
             T&acirc;ches
           </h2>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--color-primary)] text-white hover:opacity-90 transition-opacity"
-          >
+          <Button onClick={() => setShowForm(!showForm)}>
             {showForm ? "Annuler" : "Nouvelle t\u00e2che"}
-          </button>
+          </Button>
         </div>
 
         {/* Erreur */}
@@ -156,21 +154,16 @@ export default function TasksPage() {
             onSubmit={handleCreate}
             className="mb-6 p-4 bg-slate-800/30 border border-slate-700 rounded-xl space-y-3"
           >
-            <div>
-              <label className="block text-sm text-[var(--color-muted)] mb-1">
-                Titre *
-              </label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) =>
-                  setFormData({ ...formData, title: e.target.value })
-                }
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-[var(--color-text)] text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-cyan)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]"
-                placeholder="Titre de la t\u00e2che..."
-                autoFocus
-              />
-            </div>
+            <Input
+              label="Titre *"
+              type="text"
+              value={formData.title}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
+              placeholder="Titre de la t\u00e2che..."
+              autoFocus
+            />
             <div>
               <label className="block text-sm text-[var(--color-muted)] mb-1">
                 Description
@@ -186,30 +179,27 @@ export default function TasksPage() {
               />
             </div>
             <div className="flex items-center gap-4">
-              <div>
-                <label className="block text-sm text-[var(--color-muted)] mb-1">
-                  Priorit&eacute;
-                </label>
-                <select
-                  value={formData.priority}
-                  onChange={(e) =>
-                    setFormData({ ...formData, priority: e.target.value })
-                  }
-                  className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-[var(--color-text)]"
-                >
-                  <option value="low">Basse</option>
-                  <option value="medium">Moyenne</option>
-                  <option value="high">Haute</option>
-                </select>
-              </div>
+              <Select
+                label="Priorit&eacute;"
+                value={formData.priority}
+                onChange={(e) =>
+                  setFormData({ ...formData, priority: e.target.value })
+                }
+                options={[
+                  { value: "low", label: "Basse" },
+                  { value: "medium", label: "Moyenne" },
+                  { value: "high", label: "Haute" },
+                ]}
+                className="w-auto"
+              />
               <div className="flex-1" />
-              <button
+              <Button
                 type="submit"
                 disabled={submitting || !formData.title.trim()}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--color-cyan)] text-[var(--color-bg)] hover:opacity-90 transition-opacity disabled:opacity-50"
+                className="bg-[var(--color-cyan)] text-[var(--color-bg)] hover:bg-[var(--color-cyan)]/80"
               >
                 {submitting ? "Cr\u00e9ation..." : "Cr\u00e9er"}
-              </button>
+              </Button>
             </div>
           </form>
         )}
@@ -315,16 +305,12 @@ export default function TasksPage() {
                     >
                       {task.title}
                     </span>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded ${priorityColors[task.priority]}`}
-                    >
+                    <Badge className={priorityColors[task.priority]}>
                       {priorityLabels[task.priority]}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded ${statusColors[task.status]}`}
-                    >
+                    </Badge>
+                    <Badge className={statusColors[task.status]}>
                       {statusLabels[task.status]}
-                    </span>
+                    </Badge>
                   </div>
                   {task.description && (
                     <p className="text-xs text-[var(--color-muted)] mt-1 truncate">

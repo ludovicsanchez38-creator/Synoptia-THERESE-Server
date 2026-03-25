@@ -1,17 +1,18 @@
 """
-THÉRÈSE v2 - Email Router
+THERESE v2 - Email Router
 
 REST API endpoints for email operations.
 Supports Gmail (OAuth) and IMAP/SMTP (Local First).
 
 Phase 1 - Core Native Email (Gmail)
 Local First - IMAP/SMTP Provider
+
+Logique metier extraite vers services/email_service.py.
 """
 
 import html
 import json
 import logging
-from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -39,157 +40,28 @@ from app.services.email.provider_factory import (
     get_email_provider,
     list_common_providers,
 )
-from app.services.encryption import decrypt_value, encrypt_value, is_value_encrypted
+from app.services.email_service import (
+    classify_email_message,
+    discover_email_oauth_credentials,
+    ensure_valid_access_token,
+    gather_crm_context,
+    gather_thread_context,
+    get_gmail_oauth_config,
+    get_gmail_service_for_account,
+    list_and_enrich_gmail_messages,
+    upsert_email_account,
+)
+from app.services.email_service import (
+    get_email_stats as _get_email_stats,
+)
+from app.services.encryption import decrypt_value, encrypt_value
 from app.services.gmail_service import GmailService, format_message_for_storage
 from app.services.http_client import get_http_client
-from app.services.oauth import (
-    GOOGLE_ALL_SCOPES,
-    GOOGLE_AUTH_URL,
-    GOOGLE_TOKEN_URL,
-    RUNTIME_PORT,
-    OAuthConfig,
-    get_oauth_service,
-)
+from app.services.oauth import get_oauth_service
 
 logger = logging.getLogger(__name__)
 
-
-def _utcnow() -> datetime:
-    """UTC now as naive datetime (compatible SQLite)."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
-
-
 router = APIRouter()
-
-
-# ============================================================
-# Helper Functions
-# ============================================================
-
-
-def get_gmail_oauth_config(
-    client_id: str,
-    client_secret: str,
-) -> OAuthConfig:
-    """Get Google OAuth configuration (Gmail + Calendar scopes)."""
-    return OAuthConfig(
-        client_id=client_id,
-        client_secret=client_secret,
-        auth_url=GOOGLE_AUTH_URL,
-        token_url=GOOGLE_TOKEN_URL,
-        scopes=GOOGLE_ALL_SCOPES,
-        redirect_uri=f"http://localhost:{RUNTIME_PORT}/api/email/auth/callback-redirect",
-    )
-
-
-async def ensure_valid_access_token(
-    account: EmailAccount,
-    session: AsyncSession,
-) -> str:
-    """
-    Ensure the access token is valid, refreshing if expired.
-
-    Used by both email and calendar routers.
-
-    Returns:
-        Valid (decrypted) access token.
-    """
-    access_token = decrypt_value(account.access_token)
-
-    # Check if token expired
-    if account.token_expiry and _utcnow() >= account.token_expiry:
-        logger.info(f"Access token expired for {account.email}, refreshing...")
-        refresh_token = decrypt_value(account.refresh_token)
-
-        try:
-            client_id = None
-            client_secret = None
-
-            # 1. Try stored credentials on the account
-            if account.client_id and account.client_secret:
-                client_id = decrypt_value(account.client_id)
-                client_secret = decrypt_value(account.client_secret)
-                logger.debug("Using stored OAuth credentials from account")
-
-            # 2. Fallback: Try MCP Google Workspace server
-            if not client_id or not client_secret:
-                from app.services.mcp_service import get_mcp_service
-
-                mcp_service = get_mcp_service()
-
-                for _server_id, server in mcp_service.servers.items():
-                    if 'google' in server.name.lower() and 'workspace' in server.name.lower():
-                        env = server.env or {}
-                        cid = env.get('GOOGLE_OAUTH_CLIENT_ID', '')
-                        csecret = env.get('GOOGLE_OAUTH_CLIENT_SECRET', '')
-
-                        if is_value_encrypted(cid):
-                            cid = decrypt_value(cid)
-                        if is_value_encrypted(csecret):
-                            csecret = decrypt_value(csecret)
-
-                        if cid and csecret:
-                            client_id = cid
-                            client_secret = csecret
-                            break
-
-            if not client_id or not client_secret:
-                raise HTTPException(
-                    status_code=401,
-                    detail="OAuth credentials not found. Please reconnect your account."
-                )
-
-            # Refresh token using OAuth service
-            oauth_service = get_oauth_service()
-            config = get_gmail_oauth_config(client_id, client_secret)
-
-            new_tokens = await oauth_service.refresh_access_token(
-                refresh_token,
-                config,
-            )
-
-            # Update account with new tokens
-            account.access_token = encrypt_value(new_tokens['access_token'])
-            account.token_expiry = _utcnow() + timedelta(seconds=new_tokens['expires_in'])
-            account.updated_at = _utcnow()
-            # Rotation du refresh_token (Google peut en émettre un nouveau)
-            if new_tokens.get('refresh_token'):
-                account.refresh_token = encrypt_value(new_tokens['refresh_token'])
-                logger.info(f"Refresh token renouvelé pour {account.email}")
-            session.add(account)
-            await session.commit()
-
-            logger.info(f"Access token refreshed for {account.email}")
-            access_token = new_tokens['access_token']
-
-        except HTTPException:
-            raise
-        except (httpx.HTTPError, ValueError, OSError) as e:
-            logger.error(f"Failed to refresh token: {e}")
-            raise HTTPException(
-                status_code=401,
-                detail="Access token expired. Please reconnect your account."
-            )
-
-    return access_token
-
-
-async def get_gmail_service_for_account(
-    account_id: str,
-    session: AsyncSession,
-) -> GmailService:
-    """
-    Get authenticated Gmail service for account.
-
-    Handles token refresh if needed.
-    """
-    account = await session.get(EmailAccount, account_id)
-    if not account:
-        raise HTTPException(status_code=404, detail="Email account not found")
-
-    access_token = await ensure_valid_access_token(account, session)
-
-    return GmailService(access_token)
 
 
 # ============================================================
@@ -201,19 +73,10 @@ async def get_gmail_service_for_account(
 async def initiate_oauth(
     request: OAuthInitiateRequest,
 ) -> OAuthInitiateResponse:
-    """
-    Initiate Gmail OAuth flow.
-
-    User should open the returned auth_url in browser.
-
-    US-EMAIL-01: OAuth Gmail
-    SEC-008: Credentials transmis dans le body POST (pas en query params).
-    """
+    """Initiate Gmail OAuth flow."""
     oauth_service = get_oauth_service()
     config = get_gmail_oauth_config(request.client_id, request.client_secret)
-
     flow_data = oauth_service.initiate_flow('gmail', config)
-
     return OAuthInitiateResponse(**flow_data)
 
 
@@ -222,70 +85,20 @@ async def handle_oauth_callback(
     request: OAuthCallbackRequest,
     session: AsyncSession = Depends(get_session),
 ) -> EmailAccountResponse:
-    """
-    Handle OAuth callback.
-
-    Exchanges authorization code for tokens and creates/updates email account.
-
-    US-EMAIL-01: OAuth Gmail
-    """
+    """Handle OAuth callback - exchanges code for tokens and creates/updates email account."""
     oauth_service = get_oauth_service()
-
-    # Exchange code for tokens
-    tokens = await oauth_service.handle_callback(
-        request.state,
-        request.code,
-        request.error,
-    )
+    tokens = await oauth_service.handle_callback(request.state, request.code, request.error)
 
     if not tokens.get('refresh_token'):
-        raise HTTPException(
-            status_code=400,
-            detail="No refresh token received. Please revoke access and try again."
-        )
+        raise HTTPException(status_code=400, detail="No refresh token received. Please revoke access and try again.")
 
     # Get user email via Gmail API
     gmail = GmailService(tokens['access_token'])
     profile = await gmail.get_profile()
     email_address = profile['emailAddress']
 
-    # Check if account already exists
-    statement = select(EmailAccount).where(EmailAccount.email == email_address)
-    result = await session.execute(statement)
-    existing = result.scalar_one_or_none()
-
-    if existing:
-        # Update existing account
-        existing.access_token = encrypt_value(tokens['access_token'])
-        existing.refresh_token = encrypt_value(tokens['refresh_token'])
-        existing.token_expiry = _utcnow() + timedelta(seconds=tokens['expires_in'])
-        existing.scopes = json.dumps(tokens['scopes'])
-        # Store OAuth credentials for token refresh
-        if tokens.get('client_id'):
-            existing.client_id = encrypt_value(tokens['client_id'])
-        if tokens.get('client_secret'):
-            existing.client_secret = encrypt_value(tokens['client_secret'])
-        existing.updated_at = _utcnow()
-        session.add(existing)
-        await session.commit()
-        await session.refresh(existing)
-        account = existing
-    else:
-        # Create new account
-        account = EmailAccount(
-            email=email_address,
-            access_token=encrypt_value(tokens['access_token']),
-            refresh_token=encrypt_value(tokens['refresh_token']),
-            token_expiry=_utcnow() + timedelta(seconds=tokens['expires_in']),
-            scopes=json.dumps(tokens['scopes']),
-            client_id=encrypt_value(tokens['client_id']) if tokens.get('client_id') else None,
-            client_secret=encrypt_value(tokens['client_secret']) if tokens.get('client_secret') else None,
-        )
-        session.add(account)
-        await session.commit()
-        await session.refresh(account)
-
-    logger.info(f"Email account {'updated' if existing else 'created'}: {email_address}")
+    account, is_new = await upsert_email_account(session, email_address, tokens)
+    logger.info(f"Email account {'created' if is_new else 'updated'}: {email_address}")
 
     return EmailAccountResponse(
         id=account.id,
@@ -302,28 +115,21 @@ async def handle_oauth_redirect(
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
-    """
-    Handle Google's OAuth GET redirect.
-
-    Google redirects here with ?code=xxx&state=xxx after user authorizes.
-    Exchanges the code for tokens, creates/updates the account,
-    then shows a success HTML page.
-    """
+    """Handle Google's OAuth GET redirect."""
     code = request.query_params.get("code")
     state = request.query_params.get("state")
     error = request.query_params.get("error")
 
     if error:
-        # BUG-Gmail-403 : message explicatif selon le type d'erreur OAuth
         if error == "access_denied":
             error_detail = """
-            <p>Google a refusé l'accès à THÉRÈSE. Causes probables :</p>
+            <p>Google a refuse l'acces a THERESE. Causes probables :</p>
             <ul style="text-align:left;color:#B6C7DA;margin:1rem 0;padding-left:1.5rem;line-height:1.8">
               <li><strong>App en mode Test</strong> : ton adresse email n'est pas dans la liste des utilisateurs de test.<br>
-                  → Google Cloud Console → API &amp; Services → Écran de consentement OAuth → Utilisateurs de test → Ajouter ton adresse.</li>
-              <li><strong>APIs non activées</strong> : Gmail API et/ou Google Calendar API ne sont pas activées dans ton projet.<br>
-                  → Bibliothèque → chercher "Gmail API" → Activer. Même chose pour "Google Calendar API".</li>
-              <li><strong>Client OAuth révoqué</strong> : les identifiants ont changé ou l'app a été supprimée.</li>
+                  -> Google Cloud Console -> API &amp; Services -> Ecran de consentement OAuth -> Utilisateurs de test -> Ajouter ton adresse.</li>
+              <li><strong>APIs non activees</strong> : Gmail API et/ou Google Calendar API ne sont pas activees dans ton projet.<br>
+                  -> Bibliotheque -> chercher "Gmail API" -> Activer. Meme chose pour "Google Calendar API".</li>
+              <li><strong>Client OAuth revoque</strong> : les identifiants ont change ou l'app a ete supprimee.</li>
             </ul>
             <p style="font-size:0.85rem;color:#6B7BA4">Erreur Google : <code>{}</code></p>
             """.format(html.escape(error))
@@ -336,7 +142,7 @@ async def handle_oauth_redirect(
         .card{{padding:2rem;border:1px solid #22D3EE33;border-radius:1rem;max-width:500px}}
         h1{{color:#E11D8D;font-size:1.5rem}}p{{color:#B6C7DA;margin:1rem 0}}
         strong{{color:#E6EDF7}}code{{color:#22D3EE;font-size:0.8rem}}</style></head>
-        <body><div class="card"><h1>Erreur d'autorisation</h1>{error_detail}<p>Tu peux fermer cette fenêtre et réessayer.</p></div></body></html>
+        <body><div class="card"><h1>Erreur d'autorisation</h1>{error_detail}<p>Tu peux fermer cette fenetre et reessayer.</p></div></body></html>
         """, status_code=400)
 
     if not code or not state:
@@ -346,7 +152,7 @@ async def handle_oauth_redirect(
         <style>body{background:#0B1226;color:#E6EDF7;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
         .card{text-align:center;padding:2rem;border:1px solid #22D3EE33;border-radius:1rem;max-width:400px}
         h1{color:#E11D8D;font-size:1.5rem}p{color:#B6C7DA}</style></head>
-        <body><div class="card"><h1>Paramètres manquants</h1><p>Code ou state manquant dans la réponse Google.</p></div></body></html>
+        <body><div class="card"><h1>Parametres manquants</h1><p>Code ou state manquant dans la reponse Google.</p></div></body></html>
         """, status_code=400)
 
     try:
@@ -360,54 +166,24 @@ async def handle_oauth_redirect(
             <style>body{background:#0B1226;color:#E6EDF7;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
             .card{text-align:center;padding:2rem;border:1px solid #22D3EE33;border-radius:1rem;max-width:400px}
             h1{color:#E11D8D;font-size:1.5rem}p{color:#B6C7DA}</style></head>
-            <body><div class="card"><h1>Pas de refresh token</h1><p>Révoque l'accès THÉRÈSE dans tes paramètres Google et réessaye.</p></div></body></html>
+            <body><div class="card"><h1>Pas de refresh token</h1><p>Revoque l'acces THERESE dans tes parametres Google et reessaye.</p></div></body></html>
             """, status_code=400)
 
-        # Get user email
         gmail = GmailService(tokens['access_token'])
         profile = await gmail.get_profile()
         email_address = profile['emailAddress']
 
-        # Create or update account
-        statement = select(EmailAccount).where(EmailAccount.email == email_address)
-        result = await session.execute(statement)
-        existing = result.scalar_one_or_none()
-
-        if existing:
-            existing.access_token = encrypt_value(tokens['access_token'])
-            existing.refresh_token = encrypt_value(tokens['refresh_token'])
-            existing.token_expiry = _utcnow() + timedelta(seconds=tokens['expires_in'])
-            existing.scopes = json.dumps(tokens['scopes'])
-            if tokens.get('client_id'):
-                existing.client_id = encrypt_value(tokens['client_id'])
-            if tokens.get('client_secret'):
-                existing.client_secret = encrypt_value(tokens['client_secret'])
-            existing.updated_at = _utcnow()
-            session.add(existing)
-            await session.commit()
-            logger.info(f"Email account updated via redirect: {email_address}")
-        else:
-            account = EmailAccount(
-                email=email_address,
-                access_token=encrypt_value(tokens['access_token']),
-                refresh_token=encrypt_value(tokens['refresh_token']),
-                token_expiry=_utcnow() + timedelta(seconds=tokens['expires_in']),
-                scopes=json.dumps(tokens['scopes']),
-                client_id=encrypt_value(tokens['client_id']) if tokens.get('client_id') else None,
-                client_secret=encrypt_value(tokens['client_secret']) if tokens.get('client_secret') else None,
-            )
-            session.add(account)
-            await session.commit()
-            logger.info(f"Email account created via redirect: {email_address}")
+        account, is_new = await upsert_email_account(session, email_address, tokens)
+        logger.info(f"Email account {'created' if is_new else 'updated'} via redirect: {email_address}")
 
         return HTMLResponse(content=f"""
         <!DOCTYPE html>
-        <html><head><title>THERESE - Connexion réussie</title>
+        <html><head><title>THERESE - Connexion reussie</title>
         <style>body{{background:#0B1226;color:#E6EDF7;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}}
         .card{{text-align:center;padding:2rem;border:1px solid #22D3EE33;border-radius:1rem;max-width:400px}}
         h1{{color:#22D3EE;font-size:1.5rem}}p{{color:#B6C7DA;margin:1rem 0}}
         .email{{color:#22D3EE;font-weight:600}}</style></head>
-        <body><div class="card"><h1>Connexion réussie !</h1><p>Le compte <span class="email">{html.escape(email_address)}</span> est connecté à THERESE.</p><p>Tu peux fermer cette fenêtre.</p></div></body></html>
+        <body><div class="card"><h1>Connexion reussie !</h1><p>Le compte <span class="email">{html.escape(email_address)}</span> est connecte a THERESE.</p><p>Tu peux fermer cette fenetre.</p></div></body></html>
         """)
     except (ValueError, OSError, RuntimeError, httpx.HTTPError) as e:
         logger.error(f"OAuth redirect callback failed: {e}")
@@ -417,7 +193,7 @@ async def handle_oauth_redirect(
         <style>body{{background:#0B1226;color:#E6EDF7;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}}
         .card{{text-align:center;padding:2rem;border:1px solid #22D3EE33;border-radius:1rem;max-width:400px}}
         h1{{color:#E11D8D;font-size:1.5rem}}p{{color:#B6C7DA}}</style></head>
-        <body><div class="card"><h1>Erreur</h1><p>{html.escape(str(e))}</p><p>Tu peux fermer cette fenêtre et réessayer.</p></div></body></html>
+        <body><div class="card"><h1>Erreur</h1><p>{html.escape(str(e))}</p><p>Tu peux fermer cette fenetre et reessayer.</p></div></body></html>
         """, status_code=500)
 
 
@@ -426,57 +202,21 @@ async def reauthorize_account(
     account_id: str,
     session: AsyncSession = Depends(get_session),
 ) -> OAuthInitiateResponse:
-    """
-    Re-authorize an existing account with expired/revoked token.
-
-    Uses stored client_id/client_secret to initiate a new OAuth flow.
-    Falls back to MCP Google Workspace credentials if needed.
-    """
+    """Re-authorize an existing account with expired/revoked token."""
     account = await session.get(EmailAccount, account_id)
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    client_id = None
-    client_secret = None
-
-    # 1. Try stored credentials on the account
-    if account.client_id and account.client_secret:
-        client_id = decrypt_value(account.client_id)
-        client_secret = decrypt_value(account.client_secret)
-
-    # 2. Fallback: MCP Google Workspace
-    if not client_id or not client_secret:
-        try:
-            from app.services.mcp_service import get_mcp_service
-            mcp_service = get_mcp_service()
-            for _server_id, server in mcp_service.servers.items():
-                if 'google' in server.name.lower() and 'workspace' in server.name.lower():
-                    env = server.env or {}
-                    cid = env.get('GOOGLE_OAUTH_CLIENT_ID', '')
-                    csecret = env.get('GOOGLE_OAUTH_CLIENT_SECRET', '')
-                    if is_value_encrypted(cid):
-                        cid = decrypt_value(cid)
-                    if is_value_encrypted(csecret):
-                        csecret = decrypt_value(csecret)
-                    if cid and csecret:
-                        client_id = cid
-                        client_secret = csecret
-                        break
-        except (ValueError, OSError, RuntimeError) as e:
-            logger.warning(f"Failed to get MCP credentials: {e}")
+    client_id, client_secret = await discover_email_oauth_credentials(account)
 
     if not client_id or not client_secret:
-        raise HTTPException(
-            status_code=400,
-            detail="Aucun identifiant OAuth trouvé. Reconfigure le compte via le wizard."
-        )
+        raise HTTPException(status_code=400, detail="Aucun identifiant OAuth trouve. Reconfigure le compte via le wizard.")
 
     oauth_service = get_oauth_service()
     config = get_gmail_oauth_config(client_id, client_secret)
     flow_data = oauth_service.initiate_flow('gmail', config)
 
     logger.info(f"Re-authorization initiated for {account.email}")
-
     return OAuthInitiateResponse(**flow_data)
 
 
@@ -484,11 +224,7 @@ async def reauthorize_account(
 async def get_auth_status(
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    Get OAuth connection status.
-
-    US-EMAIL-01: OAuth Gmail
-    """
+    """Get OAuth connection status."""
     statement = select(EmailAccount)
     result = await session.execute(statement)
     accounts = result.scalars().all()
@@ -514,37 +250,23 @@ async def update_oauth_credentials(
     request: OAuthInitiateRequest,
     session: AsyncSession = Depends(get_session),
 ):
-    """
-    Update OAuth credentials for an existing account.
-
-    Stores client_id and client_secret (encrypted) for token refresh.
-    Then attempts to refresh the access token immediately.
-    """
+    """Update OAuth credentials for an existing account."""
     account = await session.get(EmailAccount, account_id)
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    # Store credentials
     account.client_id = encrypt_value(request.client_id)
     account.client_secret = encrypt_value(request.client_secret)
+    from app.services.email_service import _utcnow
     account.updated_at = _utcnow()
     session.add(account)
     await session.commit()
 
-    # Try to refresh token immediately
     try:
         await ensure_valid_access_token(account, session)
-        return {
-            "status": "ok",
-            "message": "Credentials updated and token refreshed",
-            "email": account.email,
-        }
+        return {"status": "ok", "message": "Credentials updated and token refreshed", "email": account.email}
     except HTTPException:
-        return {
-            "status": "credentials_saved",
-            "message": "Credentials saved but token refresh failed. You may need to re-authorize.",
-            "email": account.email,
-        }
+        return {"status": "credentials_saved", "message": "Credentials saved but token refresh failed. You may need to re-authorize.", "email": account.email}
 
 
 @router.delete("/auth/disconnect/{account_id}")
@@ -552,18 +274,12 @@ async def disconnect_account(
     account_id: str,
     session: AsyncSession = Depends(get_session),
 ):
-    """
-    Disconnect email account.
-
-    Deletes account and all synced messages.
-
-    US-EMAIL-01: OAuth Gmail
-    """
+    """Disconnect email account."""
     account = await session.get(EmailAccount, account_id)
     if not account:
         raise HTTPException(status_code=404, detail="Account not found")
 
-    # SEC-008: Revoquer le token OAuth Google avant suppression
+    # Revoke OAuth token
     if account.provider == "gmail" and account.access_token:
         try:
             access_token = decrypt_value(account.access_token)
@@ -577,13 +293,9 @@ async def disconnect_account(
             if revoke_response.status_code == 200:
                 logger.info(f"OAuth token revoked for {account.email}")
             else:
-                logger.warning(
-                    f"OAuth revocation returned {revoke_response.status_code} for {account.email}. "
-                    f"Continuing with account deletion."
-                )
+                logger.warning(f"OAuth revocation returned {revoke_response.status_code} for {account.email}")
         except (httpx.HTTPError, OSError, ValueError) as e:
-            # Ne pas bloquer la deconnexion si la revocation echoue
-            logger.warning(f"Failed to revoke OAuth token for {account.email}: {e}. Continuing with deletion.")
+            logger.warning(f"Failed to revoke OAuth token for {account.email}: {e}")
 
     # Delete messages
     statement = select(EmailMessage).where(EmailMessage.account_id == account_id)
@@ -592,12 +304,10 @@ async def disconnect_account(
     for msg in messages:
         await session.delete(msg)
 
-    # Delete account
     await session.delete(account)
     await session.commit()
 
     logger.info(f"Disconnected email account: {account.email}")
-
     return {"deleted": True, "account_id": account_id}
 
 
@@ -611,18 +321,12 @@ async def setup_imap_account(
     request: ImapSetupRequest,
     session: AsyncSession = Depends(get_session),
 ) -> EmailAccountResponse:
-    """
-    Configure un compte IMAP/SMTP.
-
-    Local First - pas besoin d'OAuth, juste les credentials IMAP.
-    """
-    # Check if account already exists
+    """Configure un compte IMAP/SMTP."""
     statement = select(EmailAccount).where(EmailAccount.email == request.email)
     result = await session.execute(statement)
     existing = result.scalar_one_or_none()
 
     if existing:
-        # Update existing
         existing.provider = "imap"
         existing.imap_host = request.imap_host
         existing.imap_port = request.imap_port
@@ -631,6 +335,7 @@ async def setup_imap_account(
         existing.smtp_host = request.smtp_host
         existing.smtp_port = request.smtp_port
         existing.smtp_use_tls = request.smtp_use_tls
+        from app.services.email_service import _utcnow
         existing.updated_at = _utcnow()
         session.add(existing)
         await session.commit()
@@ -668,11 +373,7 @@ async def setup_imap_account(
 async def test_email_connection(
     request: ImapTestRequest,
 ) -> dict:
-    """
-    Teste la connexion IMAP/SMTP.
-
-    Retourne le status de connexion sans sauvegarder.
-    """
+    """Teste la connexion IMAP/SMTP."""
     try:
         provider = get_email_provider(
             provider_type="imap",
@@ -688,20 +389,12 @@ async def test_email_connection(
         return result
     except (OSError, ValueError, RuntimeError) as e:
         logger.error(f"Connection test failed: {e}")
-        return {
-            "success": False,
-            "message": f"Echec de connexion: {str(e)}",
-        }
+        return {"success": False, "message": f"Echec de connexion: {e!s}"}
 
 
 @router.get("/providers")
 async def list_email_providers() -> list[dict]:
-    """
-    Liste les providers email preconfigures (IMAP/SMTP).
-
-    Retourne les configurations pour les providers courants
-    (Gmail IMAP, Outlook, Yahoo, Fastmail, etc.)
-    """
+    """Liste les providers email preconfigures (IMAP/SMTP)."""
     return list_common_providers()
 
 
@@ -716,19 +409,14 @@ async def list_messages(
     max_results: int = Query(50, ge=1, le=500),
     page_token: str | None = Query(None),
     query: str | None = Query(None),
-    label_ids: str | None = Query(None),  # Comma-separated
+    label_ids: str | None = Query(None),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    List messages from email account (Gmail or IMAP).
-
-    US-EMAIL-02: Lire emails
-    """
+    """List messages from email account (Gmail or IMAP)."""
     account = await session.get(EmailAccount, account_id)
     if not account:
         raise HTTPException(status_code=404, detail="Email account not found")
 
-    # Route based on provider
     if account.provider == "imap":
         return await _list_messages_imap(account, max_results, query)
     else:
@@ -745,61 +433,8 @@ async def _list_messages_gmail(
 ) -> dict:
     """List messages via Gmail API."""
     gmail = await get_gmail_service_for_account(account_id, session)
-
     label_ids_list = label_ids.split(',') if label_ids else None
-
-    result = await gmail.list_messages(
-        max_results=max_results,
-        page_token=page_token,
-        query=query,
-        label_ids=label_ids_list,
-    )
-
-    # Enrich with metadata (concurrency limited to avoid Gmail API rate limits)
-    import asyncio
-
-    sem = asyncio.Semaphore(5)
-
-    async def _enrich_one(msg: dict) -> dict:
-        async with sem:
-            try:
-                msg_detail = await gmail.get_message(msg['id'], format='metadata')
-                headers = {h['name']: h['value'] for h in msg_detail.get('payload', {}).get('headers', [])}
-                label_ids_msg = msg_detail.get('labelIds', [])
-
-                return {
-                    'id': msg['id'],
-                    'threadId': msg.get('threadId'),
-                    'snippet': msg_detail.get('snippet', ''),
-                    'subject': headers.get('Subject', '(No subject)'),
-                    'from': headers.get('From', ''),
-                    'date': headers.get('Date', ''),
-                    'labelIds': label_ids_msg,
-                    'is_read': 'UNREAD' not in label_ids_msg,
-                    'is_starred': 'STARRED' in label_ids_msg,
-                }
-            except (httpx.HTTPError, OSError, KeyError, ValueError) as e:
-                logger.error(f"Failed to get message {msg['id']}: {e}")
-                return {
-                    'id': msg['id'],
-                    'threadId': msg.get('threadId'),
-                    'error': str(e),
-                }
-
-    raw_messages = result.get('messages', [])
-    enriched_messages = await asyncio.gather(
-        *(_enrich_one(msg) for msg in raw_messages)
-    ) if raw_messages else []
-
-    error_count = sum(1 for m in enriched_messages if m.get('error'))
-    if error_count:
-        logger.warning(f"Email enrichment: {len(enriched_messages) - error_count}/{len(enriched_messages)} OK, {error_count} errors")
-
-    return {
-        'messages': list(enriched_messages),
-        'nextPageToken': result.get('nextPageToken'),
-        'resultSizeEstimate': result.get('resultSizeEstimate'),
-    }
+    return await list_and_enrich_gmail_messages(gmail, max_results, page_token, query, label_ids_list)
 
 
 async def _list_messages_imap(
@@ -819,12 +454,8 @@ async def _list_messages_imap(
         smtp_use_tls=account.smtp_use_tls,
     )
 
-    messages = await provider.list_messages(
-        max_results=max_results,
-        query=query,
-    )
+    messages = await provider.list_messages(max_results=max_results, query=query)
 
-    # Convert DTOs to same format as Gmail endpoint
     enriched = []
     for msg in messages:
         enriched.append({
@@ -849,60 +480,8 @@ async def get_email_stats(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    Recupere les statistiques d'emails par priorite.
-
-    US-EMAIL-12: Dashboard priorites
-
-    NOTE: This route MUST be defined before /messages/{message_id}
-    to avoid FastAPI matching 'stats' as a message_id parameter.
-    """
-    from sqlalchemy import func
-
-    # High priority (unread)
-    statement_high = select(func.count(EmailMessage.id)).where(
-        EmailMessage.account_id == account_id,
-        EmailMessage.priority == 'high',
-        EmailMessage.is_read == False,  # noqa: E712 (SQLAlchemy column comparison)
-    )
-    result_high = await session.execute(statement_high)
-    high_count = result_high.scalar_one()
-
-    # Medium priority (unread)
-    statement_medium = select(func.count(EmailMessage.id)).where(
-        EmailMessage.account_id == account_id,
-        EmailMessage.priority == 'medium',
-        EmailMessage.is_read == False,  # noqa: E712 (SQLAlchemy column comparison)
-    )
-    result_medium = await session.execute(statement_medium)
-    medium_count = result_medium.scalar_one()
-
-    # Low priority (unread)
-    statement_low = select(func.count(EmailMessage.id)).where(
-        EmailMessage.account_id == account_id,
-        EmailMessage.priority == 'low',
-        EmailMessage.is_read == False,  # noqa: E712 (SQLAlchemy column comparison)
-    )
-    result_low = await session.execute(statement_low)
-    low_count = result_low.scalar_one()
-
-    # Total unread
-    total_unread = high_count + medium_count + low_count
-
-    # Total messages
-    statement_total = select(func.count(EmailMessage.id)).where(
-        EmailMessage.account_id == account_id,
-    )
-    result_total = await session.execute(statement_total)
-    total_count = result_total.scalar_one()
-
-    return {
-        'high': high_count,
-        'medium': medium_count,
-        'low': low_count,
-        'total_unread': total_unread,
-        'total': total_count,
-    }
+    """Recupere les statistiques d'emails par priorite."""
+    return await _get_email_stats(session, account_id)
 
 
 @router.get("/messages/{message_id}")
@@ -911,12 +490,7 @@ async def get_message(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    Get message details.
-
-    US-EMAIL-02: Lire emails
-    """
-    # Check local cache first (BUG-081 : seulement si le body est présent)
+    """Get message details."""
     cached = await session.get(EmailMessage, message_id)
     if cached and cached.account_id == account_id and (cached.body_plain or cached.body_html):
         return {
@@ -934,14 +508,11 @@ async def get_message(
             'body_html': cached.body_html,
         }
 
-    # Fetch from Gmail
     gmail = await get_gmail_service_for_account(account_id, session)
     message = await gmail.get_message(message_id)
 
-    # Store in cache
     formatted = format_message_for_storage(message)
     formatted['account_id'] = account_id
-
     db_message = EmailMessage(**formatted)
     session.add(db_message)
     await session.commit()
@@ -955,11 +526,7 @@ async def send_email(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    Send an email (Gmail or IMAP/SMTP).
-
-    US-EMAIL-03: Envoyer email
-    """
+    """Send an email (Gmail or IMAP/SMTP)."""
     account = await session.get(EmailAccount, account_id)
     if not account:
         raise HTTPException(status_code=404, detail="Email account not found")
@@ -989,12 +556,8 @@ async def send_email(
     else:
         gmail = await get_gmail_service_for_account(account_id, session)
         result = await gmail.send_message(
-            to=request.to,
-            subject=request.subject,
-            body=request.body,
-            cc=request.cc,
-            bcc=request.bcc,
-            html=request.html,
+            to=request.to, subject=request.subject, body=request.body,
+            cc=request.cc, bcc=request.bcc, html=request.html,
         )
         return result
 
@@ -1005,23 +568,12 @@ async def create_draft(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    Create a draft email.
-
-    US-EMAIL-04: Brouillons
-    """
+    """Create a draft email."""
     gmail = await get_gmail_service_for_account(account_id, session)
-
-    result = await gmail.create_draft(
-        to=request.to,
-        subject=request.subject,
-        body=request.body,
-        cc=request.cc,
-        bcc=request.bcc,
-        html=request.html,
+    return await gmail.create_draft(
+        to=request.to, subject=request.subject, body=request.body,
+        cc=request.cc, bcc=request.bcc, html=request.html,
     )
-
-    return result
 
 
 @router.put("/messages/{message_id}")
@@ -1031,13 +583,8 @@ async def modify_message(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    Modify message labels (mark read/unread, star, etc.).
-
-    US-EMAIL-02: Lire emails
-    """
+    """Modify message labels."""
     gmail = await get_gmail_service_for_account(account_id, session)
-
     result = await gmail.modify_message(
         message_id=message_id,
         add_label_ids=request.add_label_ids,
@@ -1068,11 +615,7 @@ async def delete_message(
     permanent: bool = Query(False),
     session: AsyncSession = Depends(get_session),
 ):
-    """
-    Delete message (trash or permanent).
-
-    US-EMAIL-02: Lire emails
-    """
+    """Delete message (trash or permanent)."""
     gmail = await get_gmail_service_for_account(account_id, session)
 
     if permanent:
@@ -1080,7 +623,6 @@ async def delete_message(
     else:
         await gmail.trash_message(message_id)
 
-    # Remove from cache
     cached = await session.get(EmailMessage, message_id)
     if cached:
         await session.delete(cached)
@@ -1099,11 +641,7 @@ async def list_labels(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ) -> list[dict]:
-    """
-    List email labels/folders (Gmail labels or IMAP folders).
-
-    US-EMAIL-05: Labels
-    """
+    """List email labels/folders."""
     account = await session.get(EmailAccount, account_id)
     if not account:
         raise HTTPException(status_code=404, detail="Email account not found")
@@ -1121,19 +659,12 @@ async def list_labels(
         )
         folders = await provider.list_folders()
         return [
-            {
-                "id": f.id,
-                "name": f.name,
-                "type": f.type,
-                "messagesTotal": f.messages_total,
-                "messagesUnread": f.messages_unread,
-            }
+            {"id": f.id, "name": f.name, "type": f.type, "messagesTotal": f.messages_total, "messagesUnread": f.messages_unread}
             for f in folders
         ]
     else:
         gmail = await get_gmail_service_for_account(account_id, session)
-        labels = await gmail.list_labels()
-        return labels
+        return await gmail.list_labels()
 
 
 @router.post("/labels")
@@ -1142,14 +673,9 @@ async def create_label(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    Create a new label.
-
-    US-EMAIL-05: Labels
-    """
+    """Create a new label."""
     gmail = await get_gmail_service_for_account(account_id, session)
-    label = await gmail.create_label(request.name)
-    return label
+    return await gmail.create_label(request.name)
 
 
 @router.put("/labels/{label_id}")
@@ -1159,14 +685,9 @@ async def update_label(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    Update label name.
-
-    US-EMAIL-05: Labels
-    """
+    """Update label name."""
     gmail = await get_gmail_service_for_account(account_id, session)
-    label = await gmail.update_label(label_id, request.name)
-    return label
+    return await gmail.update_label(label_id, request.name)
 
 
 @router.delete("/labels/{label_id}")
@@ -1175,11 +696,7 @@ async def delete_label(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ):
-    """
-    Delete a label.
-
-    US-EMAIL-05: Labels
-    """
+    """Delete a label."""
     gmail = await get_gmail_service_for_account(account_id, session)
     await gmail.delete_label(label_id)
     return {"deleted": True, "label_id": label_id}
@@ -1197,23 +714,12 @@ async def classify_email(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    Classifie un email par priorité (Rouge/Orange/Vert).
-
-    US-EMAIL-08: Priorisation visuelle
-    US-EMAIL-10: Classement automatique
-    """
-    from app.services.email_classifier_v2 import EmailClassifierV2
-
-    # Get message from DB or fetch from Gmail
+    """Classifie un email par priorite (Rouge/Orange/Vert)."""
     message = await session.get(EmailMessage, message_id)
 
     if not message:
-        # Message not in DB, fetch from Gmail
         gmail = await get_gmail_service_for_account(account_id, session)
         gmail_msg = await gmail.get_message(message_id)
-
-        # Store in cache
         formatted = format_message_for_storage(gmail_msg)
         formatted['account_id'] = account_id
         message = EmailMessage(**formatted)
@@ -1224,62 +730,7 @@ async def classify_email(
     if message.account_id != account_id:
         raise HTTPException(status_code=404, detail="Message not found")
 
-    # Skip if already classified (unless force)
-    if message.priority and not request.force_reclassify:
-        return {
-            'message_id': message_id,
-            'priority': message.priority,
-            'score': message.priority_score,
-            'reason': message.priority_reason,
-            'cached': True,
-        }
-
-    # Get CRM contact score if exists
-    contact_score = None
-    try:
-        from app.services.qdrant import get_qdrant_service
-        qdrant = get_qdrant_service()
-        results = qdrant.search(
-            query=f"{message.from_name} {message.from_email}",
-            entity_type='contact',
-            limit=1,
-        )
-        if results:
-            # Assume score 0-100 is stored in metadata
-            contact_score = results[0].payload.get('score', None)
-    except (RuntimeError, OSError, ValueError) as e:
-        logger.warning(f"Failed to get CRM score for {message.from_email}: {e}")
-
-    # Classify
-    labels_list = json.loads(message.labels) if message.labels else []
-    result = EmailClassifierV2.classify(
-        subject=message.subject or '',
-        from_email=message.from_email,
-        from_name=message.from_name or '',
-        snippet=message.snippet or '',
-        labels=labels_list,
-        has_attachments=message.has_attachments,
-        date=message.date,
-        contact_score=contact_score,
-    )
-
-    # Update DB
-    message.priority = result.priority
-    message.priority_score = result.score
-    message.priority_reason = result.reason
-    message.category = result.category
-    session.add(message)
-    await session.commit()
-
-    return {
-        'message_id': message_id,
-        'priority': result.priority,
-        'category': result.category,
-        'score': result.score,
-        'reason': result.reason,
-        'signals': result.signals,
-        'cached': False,
-    }
+    return await classify_email_message(session, message, account_id, force_reclassify=request.force_reclassify)
 
 
 @router.post("/messages/{message_id}/generate-response")
@@ -1289,63 +740,16 @@ async def generate_email_response(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    Génère une proposition de réponse intelligente via LLM.
-
-    US-EMAIL-09: Génération de réponse IA
-    """
+    """Genere une proposition de reponse intelligente via LLM."""
     from app.services.email_response_generator import EmailResponseGenerator
 
-    # Get message from DB
     message = await session.get(EmailMessage, message_id)
     if not message or message.account_id != account_id:
         raise HTTPException(status_code=404, detail="Message not found")
 
-    # Get CRM contact context if exists
-    contact_context = None
-    try:
-        from app.services.qdrant import get_qdrant_service
-        qdrant = get_qdrant_service()
-        results = qdrant.search(
-            query=f"{message.from_name} {message.from_email}",
-            entity_type='contact',
-            limit=1,
-        )
-        if results:
-            payload = results[0].payload
-            contact_context = f"""Contact CRM :
-- Nom : {payload.get('name', 'N/A')}
-- Entreprise : {payload.get('company', 'N/A')}
-- Email : {payload.get('email', 'N/A')}
-- Téléphone : {payload.get('phone', 'N/A')}
-- Score : {payload.get('score', 'N/A')}/100
-- Tags : {payload.get('tags', 'N/A')}
-- Notes : {payload.get('notes', 'N/A')}"""
-    except (RuntimeError, OSError, ValueError) as e:
-        logger.warning(f"Failed to get CRM context for {message.from_email}: {e}")
+    contact_context = await gather_crm_context(message)
+    thread_context = await gather_thread_context(session, message)
 
-    # Get thread context (previous emails in thread)
-    thread_context = None
-    try:
-        statement = select(EmailMessage).where(
-            EmailMessage.thread_id == message.thread_id,
-            EmailMessage.id != message_id,
-        ).order_by(EmailMessage.date.desc()).limit(3)
-        result = await session.execute(statement)
-        thread_messages = result.scalars().all()
-
-        if thread_messages:
-            thread_lines = []
-            for tm in thread_messages:
-                thread_lines.append(f"[{tm.date.strftime('%Y-%m-%d %H:%M')}] De: {tm.from_name or tm.from_email}")
-                thread_lines.append(f"Sujet: {tm.subject}")
-                thread_lines.append(f"{tm.snippet or tm.body_plain[:200]}")
-                thread_lines.append("---")
-            thread_context = "\n".join(thread_lines)
-    except (OSError, ValueError, RuntimeError) as e:
-        logger.warning(f"Failed to get thread context for {message_id}: {e}")
-
-    # Generate response
     response_text = await EmailResponseGenerator.generate_response(
         subject=message.subject or '',
         from_name=message.from_name or message.from_email,
@@ -1372,24 +776,16 @@ async def update_message_priority(
     account_id: str = Query(...),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """
-    Change manuellement la priorité d'un email.
-
-    US-EMAIL-10: Classement automatique
-    """
-    # Validate priority
+    """Change manuellement la priorite d'un email."""
     if request.priority not in ['high', 'medium', 'low']:
         raise HTTPException(status_code=400, detail="Invalid priority. Must be 'high', 'medium', or 'low'.")
 
-    # Get message from DB
     message = await session.get(EmailMessage, message_id)
     if not message or message.account_id != account_id:
         raise HTTPException(status_code=404, detail="Message not found")
 
-    # Update priority
     message.priority = request.priority
-    message.priority_reason = "Défini manuellement par l'utilisateur"
-    # Keep score or set default
+    message.priority_reason = "Defini manuellement par l'utilisateur"
     if not message.priority_score:
         score_map = {'high': 75, 'medium': 40, 'low': 10}
         message.priority_score = score_map[request.priority]
@@ -1403,8 +799,3 @@ async def update_message_priority(
         'score': message.priority_score,
         'reason': message.priority_reason,
     }
-
-
-
-# NOTE: get_email_stats (GET /messages/stats) has been moved above
-# get_message (GET /messages/{message_id}) to avoid FastAPI route shadowing.

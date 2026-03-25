@@ -30,13 +30,13 @@ from app.models.schemas_calendar import (
     CalDAVSetupRequest,
     CalDAVTestRequest,
 )
-from app.routers.email import ensure_valid_access_token
 from app.services.calendar.provider_factory import (
     get_calendar_provider,
     list_caldav_presets,
     test_caldav_connection,
 )
 from app.services.calendar_service import CalendarService
+from app.services.email_service import ensure_valid_access_token
 from app.services.encryption import decrypt_value, encrypt_value, is_value_encrypted
 
 router = APIRouter()

@@ -42,6 +42,10 @@ export default function CRMPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Recherche contacts
+  const [contactSearchQuery, setContactSearchQuery] = useState("");
+  const [debouncedContactQuery, setDebouncedContactQuery] = useState("");
+
   // Form state pour nouveau contact
   const [showContactForm, setShowContactForm] = useState(false);
   const [contactForm, setContactForm] = useState({
@@ -78,6 +82,22 @@ export default function CRMPage() {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedContactQuery(contactSearchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [contactSearchQuery]);
+
+  const filteredContacts = contacts.filter((c) => {
+    if (!debouncedContactQuery) return true;
+    const q = debouncedContactQuery.toLowerCase();
+    return (
+      c.first_name?.toLowerCase().includes(q) ||
+      c.last_name?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.company?.toLowerCase().includes(q)
+    );
+  });
 
   useEffect(() => {
     document.title = "Contacts - Thérèse";
@@ -202,7 +222,7 @@ export default function CRMPage() {
           <div>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-[var(--color-text)]">
-                Contacts ({contacts.length})
+                Contacts ({filteredContacts.length}{debouncedContactQuery ? ` / ${contacts.length}` : ""})
               </h3>
               <button
                 onClick={() => setShowContactForm(!showContactForm)}
@@ -210,6 +230,18 @@ export default function CRMPage() {
               >
                 {showContactForm ? "Annuler" : "Nouveau contact"}
               </button>
+            </div>
+
+            {/* Recherche contacts */}
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Rechercher un contact..."
+                value={contactSearchQuery}
+                onChange={(e) => setContactSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-sm text-[var(--color-text)] placeholder:text-[var(--color-muted)]/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-cyan)] focus-visible:ring-offset-1 focus-visible:ring-offset-[var(--color-bg)]"
+                aria-label="Rechercher un contact"
+              />
             </div>
 
             {/* Formulaire nouveau contact */}
@@ -302,9 +334,9 @@ export default function CRMPage() {
             )}
 
             {/* Tableau contacts */}
-            {contacts.length === 0 ? (
+            {filteredContacts.length === 0 ? (
               <div className="text-center py-12 text-[var(--color-muted)]">
-                Aucun contact pour le moment
+                {debouncedContactQuery ? "Aucun résultat" : "Aucun contact pour le moment"}
               </div>
             ) : (
               <div className="bg-slate-800/20 border border-slate-700 rounded-xl overflow-hidden">
@@ -321,7 +353,7 @@ export default function CRMPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {contacts.map((contact) => (
+                      {filteredContacts.map((contact) => (
                         <tr
                           key={contact.id}
                           className="border-b border-slate-800 hover:bg-slate-800/20"
