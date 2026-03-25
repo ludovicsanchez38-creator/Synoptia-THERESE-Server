@@ -29,7 +29,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div id="main-content" className="min-h-screen flex items-center justify-center px-4">
+    <main id="main-content" className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-[var(--color-cyan)]">
@@ -80,10 +80,10 @@ export default function LoginPage() {
           <p className="text-right text-xs mb-4">
             <button
               type="button"
-              onClick={() => alert("Contactez votre administrateur pour reinitialiser votre mot de passe.")}
+              onClick={() => alert("Contactez votre administrateur pour réinitialiser votre mot de passe.")}
               className="text-[var(--color-cyan)] hover:underline"
             >
-              Mot de passe oublie ?
+              Mot de passe oublié ?
             </button>
           </p>
 
@@ -103,6 +103,6 @@ export default function LoginPage() {
           <a href="/legal" className="hover:underline">Mentions légales</a>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

@@ -13,7 +13,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.gzip import GZipMiddleware
 
 from app.config import settings
 
@@ -59,6 +58,11 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     await close_db()
+    try:
+        from app.services.http_client import close_http_client
+        await close_http_client()
+    except Exception:
+        pass
     if not skip_services:
         try:
             from app.services import close_qdrant
@@ -131,8 +135,6 @@ Les admins voient les utilisateurs de leur organisation.
                 content={"detail": "Trop de requêtes. Réessayez dans quelques instants."},
             )
 
-    # GZip compression (PERF)
-    app.add_middleware(GZipMiddleware, minimum_size=500)
 
     # Security headers
     @app.middleware("http")

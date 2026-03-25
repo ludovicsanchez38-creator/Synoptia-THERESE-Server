@@ -335,7 +335,7 @@ async def update_rgpd_fields(
     - Le statut de consentement
     """
     result = await session.execute(
-        select(Contact).where(Contact.id == contact_id)
+        select(Contact).where(Contact.id == contact_id, Contact.user_id == current_user.id)
     )
     contact = result.scalar_one_or_none()
 
@@ -390,7 +390,9 @@ async def get_rgpd_stats(
     - Contacts expirés ou bientôt (30 jours)
     - Contacts avec consentement
     """
-    result = await session.execute(select(Contact))
+    result = await session.execute(
+        select(Contact).where(Contact.user_id == current_user.id)
+    )
     contacts = result.scalars().all()
 
     total = len(contacts)
@@ -461,7 +463,7 @@ async def infer_rgpd_base_legale(
     - Si consentement explicite → consentement
     """
     result = await session.execute(
-        select(Contact).where(Contact.id == contact_id)
+        select(Contact).where(Contact.id == contact_id, Contact.user_id == current_user.id)
     )
     contact = result.scalar_one_or_none()
 

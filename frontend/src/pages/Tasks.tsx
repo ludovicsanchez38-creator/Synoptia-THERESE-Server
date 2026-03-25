@@ -276,6 +276,11 @@ export default function TasksPage() {
                       ? "Termin\u00e9e"
                       : "Marquer comme termin\u00e9e"
                   }
+                  aria-label={
+                    task.status === "done"
+                      ? `Tache "${task.title}" terminee`
+                      : `Marquer "${task.title}" comme terminee`
+                  }
                 >
                   {task.status === "done" && (
                     <svg
@@ -333,6 +338,7 @@ export default function TasksPage() {
                   onClick={() => handleDelete(task.id)}
                   className="text-[var(--color-muted)] hover:text-red-400 transition-colors shrink-0"
                   title="Supprimer"
+                  aria-label="Supprimer la tache"
                 >
                   <svg
                     width="16"

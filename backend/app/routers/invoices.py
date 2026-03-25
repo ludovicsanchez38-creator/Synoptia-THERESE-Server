@@ -31,13 +31,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["invoices"])
 
 
-async def _get_invoice_with_lines(session: AsyncSession, invoice_id: str) -> Invoice | None:
+async def _get_invoice_with_lines(
+    session: AsyncSession, invoice_id: str, user_id: str | None = None
+) -> Invoice | None:
     """Load an invoice with its lines eagerly loaded (async-safe)."""
     statement = (
         select(Invoice)
         .where(Invoice.id == invoice_id)
         .options(selectinload(Invoice.lines))
     )
+    if user_id:
+        statement = statement.where(Invoice.user_id == user_id)
     result = await session.execute(statement)
     return result.scalar_one_or_none()
 
@@ -178,7 +182,7 @@ async def get_invoice(
     """
     Récupère une facture par ID.
     """
-    invoice = await _get_invoice_with_lines(session, invoice_id)
+    invoice = await _get_invoice_with_lines(session, invoice_id, current_user.id)
 
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
@@ -220,6 +224,7 @@ async def create_invoice(
     invoice = Invoice(
         invoice_number=invoice_number,
         contact_id=request.contact_id,
+        user_id=current_user.id,
         document_type=document_type,
         tva_applicable=request.tva_applicable,
         currency=request.currency,
@@ -261,7 +266,7 @@ async def create_invoice(
     await session.commit()
 
     # Recharger avec eager loading
-    invoice = await _get_invoice_with_lines(session, invoice.id)
+    invoice = await _get_invoice_with_lines(session, invoice.id, current_user.id)
 
     logger.info(f"Invoice created: {invoice_number}")
 
@@ -280,7 +285,7 @@ async def update_invoice(
 
     - Si les lignes sont modifiées, recalcule les totaux
     """
-    invoice = await _get_invoice_with_lines(session, invoice_id)
+    invoice = await _get_invoice_with_lines(session, invoice_id, current_user.id)
 
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
@@ -345,7 +350,7 @@ async def update_invoice(
     await session.commit()
 
     # Recharger avec eager loading
-    invoice = await _get_invoice_with_lines(session, invoice.id)
+    invoice = await _get_invoice_with_lines(session, invoice.id, current_user.id)
 
     logger.info(f"Invoice updated: {invoice.invoice_number}")
 
@@ -361,7 +366,7 @@ async def delete_invoice(
     """
     Supprime une facture et son PDF associé.
     """
-    invoice = await _get_invoice_with_lines(session, invoice_id)
+    invoice = await _get_invoice_with_lines(session, invoice_id, current_user.id)
 
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
@@ -391,7 +396,7 @@ async def mark_invoice_paid(
     """
     Marque une facture comme payée.
     """
-    invoice = await _get_invoice_with_lines(session, invoice_id)
+    invoice = await _get_invoice_with_lines(session, invoice_id, current_user.id)
 
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
@@ -407,7 +412,7 @@ async def mark_invoice_paid(
     await session.commit()
 
     # Recharger avec eager loading
-    invoice = await _get_invoice_with_lines(session, invoice.id)
+    invoice = await _get_invoice_with_lines(session, invoice.id, current_user.id)
 
     logger.info(f"Invoice marked as paid: {invoice.invoice_number}")
 
@@ -427,7 +432,7 @@ async def generate_invoice_pdf(
     - Récupère les données du contact pour le destinataire
     - Génère un PDF conforme à la réglementation française
     """
-    invoice = await _get_invoice_with_lines(session, invoice_id)
+    invoice = await _get_invoice_with_lines(session, invoice_id, current_user.id)
 
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
@@ -510,7 +515,7 @@ async def send_invoice_by_email(
     - Un compte email configuré (Phase 1 - Email)
     - Une facture avec un contact ayant un email
     """
-    invoice = await _get_invoice_with_lines(session, invoice_id)
+    invoice = await _get_invoice_with_lines(session, invoice_id, current_user.id)
 
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")

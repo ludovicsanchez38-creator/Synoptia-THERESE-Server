@@ -6,7 +6,7 @@ export default function Legal() {
   }, []);
 
   return (
-    <div id="main-content" className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] p-6 max-w-4xl mx-auto">
+    <main id="main-content" className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)] p-6 max-w-4xl mx-auto">
       <a href="/login" className="text-[var(--color-cyan)] hover:underline text-sm mb-6 inline-block">
         ← Retour
       </a>
@@ -103,6 +103,6 @@ export default function Legal() {
       <footer className="text-[var(--color-muted)]/50 text-xs mt-12 pt-4 border-t border-slate-800">
         Thérèse Server - Logiciel libre sous licence AGPL-3.0
       </footer>
-    </div>
+    </main>
   );
 }

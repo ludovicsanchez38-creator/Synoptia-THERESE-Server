@@ -98,6 +98,7 @@ export default function ConversationList() {
                       onClick={(e) => handleDelete(e, conv.id)}
                       className="opacity-0 group-hover:opacity-60 hover:!opacity-100 text-red-400 hover:text-red-300 transition-opacity ml-1"
                       title="Supprimer"
+                      aria-label="Supprimer la conversation"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
