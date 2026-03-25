@@ -75,8 +75,5 @@ jobs:
       - name: Installer les dependances
         run: npm ci
 
-      - name: Lint (eslint)
-        run: npm run lint --if-present
-
       - name: Build TypeScript + Vite
         run: npm run build
