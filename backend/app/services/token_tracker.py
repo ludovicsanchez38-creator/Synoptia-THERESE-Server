@@ -7,7 +7,7 @@ US-ESC-01 to US-ESC-05: Token tracking, cost estimation, and limits.
 import logging
 from collections import deque
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 

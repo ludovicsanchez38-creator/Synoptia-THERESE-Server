@@ -10,15 +10,16 @@ import io
 import json
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any, Literal
 
-from app.models.entities import Contact, Deliverable, Project
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+from app.models.entities import Contact, Deliverable, Project
 
 logger = logging.getLogger(__name__)
 

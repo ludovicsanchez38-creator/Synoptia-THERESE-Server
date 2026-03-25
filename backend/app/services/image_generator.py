@@ -23,9 +23,10 @@ def _get_api_key_from_db(provider: str) -> str | None:
     Falls back to environment variable if DB not available.
     """
     try:
+        from sqlalchemy import create_engine, text
+
         from app.config import settings
         from app.services.encryption import get_encryption_service
-        from sqlalchemy import create_engine, text
 
         engine = create_engine(f"sqlite:///{settings.db_path}")
         with engine.connect() as conn:

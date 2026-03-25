@@ -7,6 +7,10 @@ API endpoints pour le board de décision stratégique.
 import json
 import logging
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.board import (
     ADVISOR_CONFIG,
     AdvisorInfo,
@@ -16,9 +20,6 @@ from app.models.board import (
 )
 from app.models.database import get_session, get_session_context
 from app.services.board import BoardService
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 

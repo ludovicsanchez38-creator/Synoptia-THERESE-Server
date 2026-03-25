@@ -11,6 +11,9 @@ import logging
 from typing import AsyncGenerator
 from uuid import uuid4
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
 from app.models.board import (
     ADVISOR_CONFIG,
     AdvisorOpinion,
@@ -31,8 +34,6 @@ from app.services.llm import (
 from app.services.llm import Message as LLMMessage
 from app.services.user_profile import get_cached_profile
 from app.services.web_search import WebSearchService
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 

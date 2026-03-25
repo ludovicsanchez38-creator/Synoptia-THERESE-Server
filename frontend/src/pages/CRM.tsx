@@ -14,12 +14,12 @@ import {
 type CrmTab = "contacts" | "pipeline" | "activities";
 
 const stageLabels: Record<string, string> = {
-  lead: "Lead",
-  contact: "Contact",
-  prospect: "Prospect",
-  negotiation: "N\u00e9gociation",
-  client: "Client",
-  lost: "Perdu",
+  lead: "Nouveau",
+  contact: "Identifié",
+  prospect: "En cours",
+  negotiation: "En discussion",
+  client: "Actif",
+  lost: "Archivé",
 };
 
 const stageColors: Record<string, string> = {
@@ -79,7 +79,7 @@ export default function CRMPage() {
   }, []);
 
   useEffect(() => {
-    document.title = "CRM - Thérèse";
+    document.title = "Contacts - Thérèse";
     loadData();
   }, [loadData]);
 
@@ -146,7 +146,7 @@ export default function CRMPage() {
       <main className="flex-1 p-4 md:p-6 max-w-6xl mx-auto w-full">
         {/* Titre */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-[var(--color-text)]">CRM</h2>
+          <h2 className="text-xl font-bold text-[var(--color-text)]">Contacts</h2>
         </div>
 
         {/* Erreur */}
@@ -167,7 +167,7 @@ export default function CRMPage() {
           {(
             [
               { key: "contacts" as CrmTab, label: "Contacts" },
-              { key: "pipeline" as CrmTab, label: "Pipeline" },
+              { key: "pipeline" as CrmTab, label: "Vue d'ensemble" },
               { key: "activities" as CrmTab, label: "Activit\u00e9s" },
             ] as const
           ).map((tab) => (
@@ -313,8 +313,8 @@ export default function CRMPage() {
                         <th className="px-4 py-3">Nom</th>
                         <th className="px-4 py-3">Email</th>
                         <th className="px-4 py-3">T&eacute;l&eacute;phone</th>
-                        <th className="px-4 py-3">Stage</th>
-                        <th className="px-4 py-3">Score</th>
+                        <th className="px-4 py-3">Étape</th>
+                        <th className="px-4 py-3">Priorité</th>
                         <th className="px-4 py-3">Cr&eacute;&eacute; le</th>
                       </tr>
                     </thead>
@@ -381,7 +381,7 @@ export default function CRMPage() {
         {!loading && activeTab === "pipeline" && (
           <div>
             <h3 className="text-sm font-semibold text-[var(--color-text)] mb-4">
-              Pipeline commercial
+              Vue d'ensemble
             </h3>
 
             {pipelineStats ? (

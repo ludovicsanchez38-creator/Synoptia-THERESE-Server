@@ -10,7 +10,11 @@ Local First - Multi-Provider
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.models.database import get_session
 from app.models.entities import Calendar, CalendarEvent, EmailAccount, generate_uuid
@@ -34,9 +38,6 @@ from app.services.calendar.provider_factory import (
 )
 from app.services.calendar_service import CalendarService
 from app.services.encryption import decrypt_value, encrypt_value, is_value_encrypted
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

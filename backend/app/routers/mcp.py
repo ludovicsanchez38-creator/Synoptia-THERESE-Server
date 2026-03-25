@@ -6,6 +6,8 @@ API endpoints for managing MCP servers and tools.
 
 import logging
 
+from fastapi import APIRouter, HTTPException
+
 from app.models.schemas_mcp import (
     MCPServerCreate,
     MCPServerResponse,
@@ -15,7 +17,6 @@ from app.models.schemas_mcp import (
     ToolCallResultResponse,
 )
 from app.services.mcp_service import MCPServerStatus, get_mcp_service
-from fastapi import APIRouter, HTTPException
 
 logger = logging.getLogger(__name__)
 
@@ -524,8 +525,9 @@ async def install_preset(preset_id: str, env: dict[str, str] | None = None) -> M
     try:
         import asyncio
 
-        from app.models.entities import Preference
         from sqlmodel import select as sql_select
+
+        from app.models.entities import Preference
 
         async def _get_working_dir():
             from app.models.database import AsyncSessionLocal

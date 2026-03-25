@@ -8,6 +8,10 @@ US-ESC-01 to US-ESC-05.
 import json
 import logging
 
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
 from app.models.database import get_session
 from app.models.entities import Preference
 from app.models.schemas_escalation import (
@@ -20,9 +24,6 @@ from app.services.token_tracker import (
     detect_uncertainty,
     get_token_tracker,
 )
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 

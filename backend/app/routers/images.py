@@ -8,6 +8,9 @@ import logging
 import os
 from typing import Literal
 
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+
 from app.models.schemas_images import (
     ImageGenerateRequest,
     ImageListResponse,
@@ -19,8 +22,6 @@ from app.services.image_generator import (
     ImageProvider,
     get_image_service,
 )
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

@@ -7,9 +7,12 @@ Part of the "Local First" architecture.
 """
 
 import logging
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
 import pytz
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
 from app.models.entities import Calendar, CalendarEvent, generate_uuid
 from app.services.calendar.base_provider import (
     CalendarDTO,
@@ -18,8 +21,6 @@ from app.services.calendar.base_provider import (
     CreateEventRequest,
     UpdateEventRequest,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 

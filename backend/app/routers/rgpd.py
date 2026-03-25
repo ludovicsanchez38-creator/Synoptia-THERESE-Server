@@ -12,8 +12,29 @@ import json
 import logging
 from datetime import UTC, datetime, timedelta
 
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
+from app.auth.backend import log_audit
+from app.auth.rbac import CurrentUser
 from app.models.database import get_session
-from app.models.entities import Activity, Contact, Conversation, Deliverable, Message, Project, Task
+from app.models.entities import (
+    Activity,
+    BoardDecisionDB,
+    Contact,
+    Conversation,
+    Deliverable,
+    FileMetadata,
+    Invoice,
+    InvoiceLine,
+    Message,
+    Preference,
+    Project,
+    PromptTemplate,
+    Task,
+)
 from app.models.schemas import (
     RGPDAnonymizeRequest,
     RGPDAnonymizeResponse,
@@ -22,10 +43,6 @@ from app.models.schemas import (
     RGPDStatsResponse,
     RGPDUpdateRequest,
 )
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -486,17 +503,6 @@ async def infer_rgpd_base_legale(
 # Endpoints proteges par authentification JWT
 # ============================================================
 
-
-from app.auth.rbac import CurrentUser
-from app.auth.backend import log_audit
-from app.models.entities import (
-    BoardDecisionDB,
-    FileMetadata,
-    Preference,
-    PromptTemplate,
-    Invoice,
-    InvoiceLine,
-)
 
 
 

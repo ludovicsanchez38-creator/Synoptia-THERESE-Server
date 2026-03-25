@@ -8,11 +8,12 @@ Part of the "Local First" architecture.
 import logging
 from typing import Literal
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.services.calendar.base_provider import CalendarProvider
 from app.services.calendar.caldav_provider import CalDAVProvider
 from app.services.calendar.google_provider import GoogleCalendarProvider
 from app.services.calendar.local_provider import LocalCalendarProvider
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 

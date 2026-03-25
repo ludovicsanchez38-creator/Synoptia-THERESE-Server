@@ -5,11 +5,10 @@ Lightweight CRUD for user preferences and LLM model listing.
 No heavy dependencies (encryption, http_client, Ollama probing).
 """
 
-import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select

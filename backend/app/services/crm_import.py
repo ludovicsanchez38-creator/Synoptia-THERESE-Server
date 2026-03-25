@@ -10,13 +10,14 @@ import io
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any, Literal
 
-from app.models.entities import Contact, Deliverable, Project, generate_uuid
 from openpyxl import load_workbook
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+from app.models.entities import Contact, Deliverable, Project, generate_uuid
 
 logger = logging.getLogger(__name__)
 

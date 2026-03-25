@@ -12,6 +12,13 @@ import logging
 import re
 from datetime import UTC, datetime
 
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
+from app.auth.models import User
+from app.auth.rbac import CurrentUser, RequireAdmin
 from app.config import settings
 from app.models.database import get_session
 from app.models.entities import (
@@ -41,10 +48,6 @@ from app.services.audit import (
     AuditService,
     log_activity,
 )
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +61,7 @@ router = APIRouter()
 
 @router.get("/export")
 async def export_all_data(
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -82,15 +86,21 @@ async def export_all_data(
     )
 
     # Contacts
-    contacts_result = await session.execute(select(Contact))
+    contacts_result = await session.execute(
+        select(Contact).where((Contact.user_id == current_user.id) | (Contact.scope == "global"))
+    )
     contacts = contacts_result.scalars().all()
 
     # Projects
-    projects_result = await session.execute(select(Project))
+    projects_result = await session.execute(
+        select(Project).where((Project.user_id == current_user.id) | (Project.scope == "global"))
+    )
     projects = projects_result.scalars().all()
 
     # Conversations
-    conversations_result = await session.execute(select(Conversation))
+    conversations_result = await session.execute(
+        select(Conversation).where(Conversation.user_id == current_user.id)
+    )
     conversations = conversations_result.scalars().all()
 
     # Messages
@@ -98,15 +108,21 @@ async def export_all_data(
     messages = messages_result.scalars().all()
 
     # Files
-    files_result = await session.execute(select(FileMetadata))
+    files_result = await session.execute(
+        select(FileMetadata).where((FileMetadata.user_id == current_user.id) | (FileMetadata.scope == "global"))
+    )
     files = files_result.scalars().all()
 
     # Preferences (excluding API keys)
-    prefs_result = await session.execute(select(Preference))
+    prefs_result = await session.execute(
+        select(Preference).where((Preference.user_id == current_user.id) | (Preference.user_id.is_(None)))
+    )
     preferences = prefs_result.scalars().all()
 
     # Board decisions
-    decisions_result = await session.execute(select(BoardDecisionDB))
+    decisions_result = await session.execute(
+        select(BoardDecisionDB).where(BoardDecisionDB.user_id == current_user.id)
+    )
     decisions = decisions_result.scalars().all()
 
     # Activity logs
@@ -237,6 +253,7 @@ async def export_all_data(
 
 @router.get("/export/conversations")
 async def export_conversations(
+    current_user: CurrentUser,
     format: str = "json",
     session: AsyncSession = Depends(get_session),
 ):
@@ -246,7 +263,9 @@ async def export_conversations(
     Args:
         format: json ou markdown
     """
-    conversations_result = await session.execute(select(Conversation))
+    conversations_result = await session.execute(
+        select(Conversation).where(Conversation.user_id == current_user.id)
+    )
     conversations = conversations_result.scalars().all()
 
     messages_result = await session.execute(select(Message))
@@ -312,6 +331,7 @@ async def export_conversations(
 @router.delete("/all")
 async def delete_all_data(
     confirm: bool = False,
+    current_user: User = RequireAdmin,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -396,6 +416,7 @@ async def delete_all_data(
 
 @router.get("/logs")
 async def get_activity_logs(
+    current_user: CurrentUser,
     action: str | None = None,
     resource_type: str | None = None,
     limit: int = 100,
@@ -453,7 +474,7 @@ async def get_activity_logs(
 
 
 @router.get("/logs/actions")
-async def get_available_actions():
+async def get_available_actions(current_user: CurrentUser):
     """Liste les types d'actions disponibles pour le filtrage."""
     return {
         "actions": [action.value for action in AuditAction],
@@ -477,6 +498,7 @@ async def get_available_actions():
 @router.delete("/logs")
 async def cleanup_old_logs(
     days: int = 90,
+    current_user: User = RequireAdmin,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -501,6 +523,7 @@ async def cleanup_old_logs(
 
 @router.post("/backup")
 async def create_backup(
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -555,7 +578,7 @@ async def create_backup(
 
 
 @router.get("/backups")
-async def list_backups():
+async def list_backups(current_user: CurrentUser):
     """
     List available backups (US-BAK-04).
     """
@@ -593,6 +616,7 @@ async def list_backups():
 async def restore_backup(
     backup_name: str,
     confirm: bool = False,
+    current_user: User = RequireAdmin,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -662,7 +686,7 @@ async def restore_backup(
 
 
 @router.delete("/backups/{backup_name}")
-async def delete_backup(backup_name: str):
+async def delete_backup(backup_name: str, current_user: User = RequireAdmin):
     """Delete a backup."""
     from pathlib import Path
 
@@ -697,6 +721,7 @@ async def delete_backup(backup_name: str):
 @router.post("/import/conversations")
 async def import_conversations(
     data: dict,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -748,6 +773,7 @@ async def import_conversations(
 @router.post("/import/contacts")
 async def import_contacts(
     data: dict,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """
@@ -785,7 +811,7 @@ async def import_contacts(
 
 
 @router.get("/backup/status")
-async def get_backup_status():
+async def get_backup_status(current_user: CurrentUser):
     """
     Get backup status and recommendations.
     """

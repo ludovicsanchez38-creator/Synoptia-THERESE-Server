@@ -10,7 +10,7 @@ Sprint 2 - PERF-2.1: Refactored to use modular providers.
 import logging
 import os
 import re
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -51,9 +51,10 @@ async def load_api_key_cache() -> None:
     global _api_key_cache, _api_key_cache_loaded
 
     try:
+        from sqlalchemy import text
+
         from app.models.database import get_sync_connection
         from app.services.encryption import get_encryption_service
-        from sqlalchemy import text
 
         with get_sync_connection() as conn:
             result = conn.execute(
@@ -99,9 +100,10 @@ def _get_api_key_from_db(provider: str) -> str | None:
         import asyncio
 
         def _sync_read_key():
+            from sqlalchemy import text
+
             from app.models.database import get_sync_connection
             from app.services.encryption import get_encryption_service
-            from sqlalchemy import text
 
             with get_sync_connection() as conn:
                 result = conn.execute(
@@ -290,8 +292,9 @@ AUTORISÉ : les listes à puces (- point clé : valeur).
         selected_provider = None
         selected_model = None
         try:
-            from app.models.database import get_sync_connection
             from sqlalchemy import text
+
+            from app.models.database import get_sync_connection
 
             with get_sync_connection() as conn:
                 for key in ("llm_provider", "llm_model"):
@@ -586,8 +589,9 @@ def get_llm_service_for_provider(provider_name: str, model_override: str | None 
     # (sinon on enverrait "claude-opus-4-6" à GPT/Gemini/Grok → crash Board cloud)
     user_model = None
     try:
-        from app.models.database import get_sync_connection
         from sqlalchemy import text
+
+        from app.models.database import get_sync_connection
 
         with get_sync_connection() as conn:
             # Lire le provider principal de l'utilisateur

@@ -8,7 +8,7 @@ Zero dépendance externe (pas de Redis, pas de RabbitMQ).
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 logger = logging.getLogger(__name__)

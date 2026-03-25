@@ -6,7 +6,12 @@ Phase 5 - CRM Features + Local First Export/Import
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import Response
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import func, select
 
 from app.models.database import get_session
 from app.models.entities import Activity, Contact, Deliverable, EmailAccount, Preference, Project
@@ -48,10 +53,6 @@ from app.services.oauth import (
     get_oauth_service,
 )
 from app.services.scoring import update_contact_score
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from fastapi.responses import Response
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import func, select
 
 logger = logging.getLogger(__name__)
 

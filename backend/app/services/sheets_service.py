@@ -8,8 +8,9 @@ Used for CRM sync from Google Sheets.
 import logging
 
 import httpx
-from app.services.http_client import get_http_client
 from fastapi import HTTPException
+
+from app.services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
 

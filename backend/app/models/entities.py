@@ -4,7 +4,7 @@ THÉRÈSE v2 - SQLModel Entities
 Database models for structured data storage.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Optional
 from uuid import uuid4
 

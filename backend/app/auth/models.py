@@ -5,7 +5,7 @@ User, Organization and Role models for multi-tenant authentication.
 Uses FastAPI-Users compatible base.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 from typing import Optional
 from uuid import uuid4

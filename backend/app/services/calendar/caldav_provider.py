@@ -7,11 +7,15 @@ Supports Nextcloud, iCloud, Fastmail, cal.com, Radicale, etc.
 
 import asyncio
 import logging
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 import caldav
 import pytz
+from icalendar import Calendar as ICalendar
+from icalendar import Event as IEvent
+from icalendar import vDate, vDatetime
+
 from app.services.calendar.base_provider import (
     CalendarDTO,
     CalendarEventDTO,
@@ -19,9 +23,6 @@ from app.services.calendar.base_provider import (
     CreateEventRequest,
     UpdateEventRequest,
 )
-from icalendar import Calendar as ICalendar
-from icalendar import Event as IEvent
-from icalendar import vDate, vDatetime
 
 logger = logging.getLogger(__name__)
 

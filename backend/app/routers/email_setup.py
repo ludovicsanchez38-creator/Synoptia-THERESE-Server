@@ -4,6 +4,9 @@ THÉRÈSE v2 - Email Setup Router
 API endpoints pour le wizard de configuration email.
 """
 
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.database import get_session
 from app.models.schemas_email import (
     GenerateGuideRequest,
@@ -12,8 +15,6 @@ from app.models.schemas_email import (
     ValidateCredentialsResponse,
 )
 from app.services.email_setup_assistant import EmailSetupAssistant, SetupStatus
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 

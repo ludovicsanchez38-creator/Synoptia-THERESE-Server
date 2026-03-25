@@ -7,7 +7,7 @@ Part of the "Local First" architecture.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal, Optional
 
 

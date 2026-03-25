@@ -6,14 +6,14 @@ JWT authentication with password hashing (bcrypt direct).
 
 import logging
 import secrets
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import bcrypt
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.auth.models import AuditLog, RefreshToken, User, UserRole
 from app.config import settings
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,7 @@ def create_access_token(user: User) -> str:
         "name": user.name,
         "role": user.role,
         "org_id": user.org_id,
+        "charter_accepted": user.charter_accepted,
         "exp": datetime.utcnow() + timedelta(seconds=settings.jwt_lifetime_seconds),
         "iat": datetime.utcnow(),
     }

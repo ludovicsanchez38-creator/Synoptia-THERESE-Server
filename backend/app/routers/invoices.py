@@ -6,7 +6,12 @@ Phase 4 - Invoicing
 """
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
 
 from app.models.database import get_session
 from app.models.entities import Contact, Invoice, InvoiceLine
@@ -19,10 +24,6 @@ from app.models.schemas import (
 )
 from app.services.invoice_pdf import InvoicePDFGenerator
 from app.services.user_profile import get_cached_profile
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 

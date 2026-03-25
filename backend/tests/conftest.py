@@ -90,3 +90,59 @@ async def client(async_client: AsyncClient) -> AsyncGenerator[AsyncClient, None]
 def sync_client() -> TestClient:
     """Create synchronous test client for simple tests."""
     return TestClient(app)
+
+
+
+@pytest_asyncio.fixture(scope="function")
+async def authenticated_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Create async test client with a valid JWT token (mock admin)."""
+    from jose import jwt
+    from datetime import datetime, timedelta
+    from app.config import settings
+
+    # Generate a valid JWT token
+    payload = {
+        "sub": "test-admin-id",
+        "email": "admin@test.org",
+        "name": "Admin Test",
+        "role": "admin",
+        "org_id": "test-org-id",
+        "charter_accepted": True,
+        "exp": datetime.utcnow() + timedelta(hours=1),
+        "iat": datetime.utcnow(),
+    }
+    token = jwt.encode(payload, settings.jwt_secret, algorithm="HS256")
+
+    async def override_get_session():
+        yield db_session
+
+    app.dependency_overrides[get_session] = override_get_session
+
+    # Override get_current_user to avoid DB lookup
+    from app.auth.rbac import get_current_user
+
+    mock_user = type("MockUser", (), {
+        "id": "test-admin-id",
+        "email": "admin@test.org",
+        "name": "Admin Test",
+        "role": "admin",
+        "org_id": "test-org-id",
+        "is_active": True,
+        "is_verified": True,
+        "is_superuser": True,
+        "charter_accepted": True,
+    })()
+
+    async def override_get_current_user():
+        return mock_user
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as ac:
+        yield ac
+
+    app.dependency_overrides.clear()

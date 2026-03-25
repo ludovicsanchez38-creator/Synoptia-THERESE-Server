@@ -8,9 +8,10 @@ Phase 5 - CRM Features
 import logging
 from datetime import UTC, datetime
 
-from app.models.entities import Activity, Contact
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.entities import Activity, Contact
 
 logger = logging.getLogger(__name__)
 

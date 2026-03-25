@@ -5,17 +5,18 @@ CRUD conversations + messages. Le streaming LLM sera activé avec Docker.
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 
-from app.auth.rbac import CurrentUser
-from app.auth.tenant import scope_query, set_owner, get_owned
-from app.models.database import get_session
-from app.models.entities import Conversation, Message
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+from app.auth.rbac import CurrentUser
+from app.auth.tenant import get_owned, scope_query, set_owner
+from app.models.database import get_session
+from app.models.entities import Conversation, Message
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

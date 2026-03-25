@@ -9,11 +9,12 @@ Utilise par crm.py (router), crm_sync.py (service) et crm_import.py (service).
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 
-from app.models.entities import Contact, Deliverable, Preference, Project, Task
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+from app.models.entities import Contact, Deliverable, Preference, Project, Task
 
 logger = logging.getLogger(__name__)
 

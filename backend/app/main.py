@@ -8,13 +8,14 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from app.config import settings
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.gzip import GZipMiddleware
+
+from app.config import settings
 
 # Rate limiting (SEC-015)
 from app.rate_limit import HAS_SLOWAPI, limiter
@@ -188,6 +189,15 @@ Les admins voient les utilisateurs de leur organisation.
                 content={"detail": "Token invalide ou expire"},
             )
 
+        # Verifier que la charte est acceptee (sauf pour les endpoints auth)
+        if not path.startswith("/api/auth/"):
+            charter_accepted = payload.get("charter_accepted")
+            if not charter_accepted:
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Vous devez accepter la charte IA avant d'utiliser l'application"},
+                )
+
         return await call_next(request)
 
     # Error handlers
@@ -228,7 +238,7 @@ Les admins voient les utilisateurs de leur organisation.
 
             client = get_qdrant_client()
             if client:
-                collections = await client.get_collections()
+                await client.get_collections()
                 services["qdrant"] = "ok"
         except Exception as e:
             services["qdrant"] = f"error: {e}"

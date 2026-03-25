@@ -9,14 +9,15 @@ Phase 1 - Core Native Email (Gmail)
 
 import base64
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import httpx
-from app.services.http_client import get_http_client
 from bs4 import BeautifulSoup
 from fastapi import HTTPException
+
+from app.services.http_client import get_http_client
 
 logger = logging.getLogger(__name__)
 

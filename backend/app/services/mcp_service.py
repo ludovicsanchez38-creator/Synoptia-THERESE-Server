@@ -12,7 +12,7 @@ import shutil
 import subprocess
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -314,7 +314,7 @@ class MCPService:
                 appdata = os.environ.get("APPDATA", "")
                 localappdata = os.environ.get("LOCALAPPDATA", "")
                 extra_paths.extend([
-                    os.path.join(os.environ.get("ProgramFiles", ""), "nodejs"),
+                    os.path.join(os.environ.get("PROGRAMFILES", ""), "nodejs"),
                     os.path.join(appdata, "npm") if appdata else "",
                     os.path.join(localappdata, "fnm") if localappdata else "",
                 ])

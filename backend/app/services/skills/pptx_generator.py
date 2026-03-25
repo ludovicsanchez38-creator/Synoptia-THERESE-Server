@@ -10,12 +10,13 @@ import re
 from pathlib import Path
 from typing import Any
 
-from app.services.skills.base import FileFormat, SkillParams, SkillResult
-from app.services.skills.code_executor import CodeGenSkill
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 from pptx.util import Inches, Pt
+
+from app.services.skills.base import FileFormat, SkillParams, SkillResult
+from app.services.skills.code_executor import CodeGenSkill
 
 logger = logging.getLogger(__name__)
 

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
+
 from app.config import settings
 
 logger = logging.getLogger(__name__)

@@ -6,6 +6,8 @@ API /api/v3/commands - Point d'entrée unique pour toutes les commandes.
 
 import logging
 
+from fastapi import APIRouter, HTTPException, Query
+
 from app.models.command import (
     CommandDefinitionResponse,
     CreateUserCommandRequest,
@@ -13,7 +15,6 @@ from app.models.command import (
     UpdateUserCommandRequest,
 )
 from app.services.command_registry import get_command_registry
-from fastapi import APIRouter, HTTPException, Query
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

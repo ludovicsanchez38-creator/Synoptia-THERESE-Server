@@ -7,13 +7,15 @@ Supports any standard IMAP/SMTP server (Gmail, Outlook, Fastmail, etc.)
 
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import aiosmtplib
+from imap_tools import AND, OR, MailBox, MailMessage
+
 from app.services.email.base_provider import (
     EmailAttachmentDTO,
     EmailFolderDTO,
@@ -21,7 +23,6 @@ from app.services.email.base_provider import (
     EmailProvider,
     SendEmailRequest,
 )
-from imap_tools import AND, OR, MailBox, MailMessage
 
 logger = logging.getLogger(__name__)
 

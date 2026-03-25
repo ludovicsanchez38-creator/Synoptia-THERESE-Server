@@ -9,7 +9,7 @@ import asyncio
 import hashlib
 import logging
 import mimetypes
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile

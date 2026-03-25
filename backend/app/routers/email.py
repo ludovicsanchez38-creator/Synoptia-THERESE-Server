@@ -13,6 +13,11 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
 from app.models.database import get_session
 from app.models.entities import EmailAccount, EmailMessage
 from app.models.schemas_email import (
@@ -44,10 +49,6 @@ from app.services.oauth import (
     OAuthConfig,
     get_oauth_service,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 

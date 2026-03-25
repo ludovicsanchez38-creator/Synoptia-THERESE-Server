@@ -52,6 +52,7 @@ function UsersTable({
             <th className="pb-2 pr-4">Email</th>
             <th className="pb-2 pr-4">Rôle</th>
             <th className="pb-2 pr-4">Statut</th>
+            <th className="pb-2 pr-4">Charte</th>
             <th className="pb-2 pr-4">Dernière connexion</th>
             <th className="pb-2">Actions</th>
           </tr>
@@ -87,6 +88,17 @@ function UsersTable({
                   }`}
                 >
                   {u.is_active ? "Actif" : "Inactif"}
+                </span>
+              </td>
+              <td className="py-2 pr-4">
+                <span
+                  className={`text-xs px-2 py-0.5 rounded ${
+                    u.charter_accepted
+                      ? "bg-emerald-900/40 text-emerald-400"
+                      : "bg-yellow-900/40 text-yellow-400"
+                  }`}
+                >
+                  {u.charter_accepted ? "Acceptée" : "En attente"}
                 </span>
               </td>
               <td className="py-2 pr-4 text-[var(--color-muted)] text-xs">

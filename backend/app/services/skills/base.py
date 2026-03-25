@@ -6,7 +6,7 @@ Classes abstraites et modèles de base pour le système de skills.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any

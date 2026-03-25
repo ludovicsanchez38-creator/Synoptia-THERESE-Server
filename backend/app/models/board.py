@@ -4,7 +4,7 @@ THÉRÈSE v2 - Board de Décision - Models
 Modèles Pydantic pour le board de décision stratégique.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field

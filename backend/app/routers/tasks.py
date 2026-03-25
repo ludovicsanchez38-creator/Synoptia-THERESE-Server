@@ -7,14 +7,15 @@ Phase 3 - Tasks/Todos
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.models.database import get_session
 from app.models.entities import Task
 from app.models.schemas import CreateTaskRequest, TaskResponse, UpdateTaskRequest
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

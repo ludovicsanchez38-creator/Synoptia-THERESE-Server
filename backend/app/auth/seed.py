@@ -6,11 +6,10 @@ Usage : python -m app.auth.seed
 """
 
 import asyncio
-import sys
 
 from app.auth.backend import hash_password
 from app.auth.models import Organization, User, UserRole
-from app.models.database import init_db, get_session_context
+from app.models.database import get_session_context, init_db
 
 
 async def seed():

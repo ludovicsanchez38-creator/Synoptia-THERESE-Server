@@ -9,13 +9,14 @@ import os
 import tempfile
 from pathlib import Path
 
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
 from app.models.database import get_session
 from app.models.entities import Preference
 from app.models.schemas_voice import TranscriptionResponse
 from app.services.http_client import get_http_client
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 

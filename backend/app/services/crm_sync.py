@@ -10,7 +10,10 @@ Refactored: utilise crm_utils pour les upserts partages.
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.models.entities import Contact, Deliverable, Preference, Project
 from app.services.crm_utils import (
@@ -20,8 +23,6 @@ from app.services.crm_utils import (
     upsert_task,
 )
 from app.services.sheets_service import GoogleSheetsService
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 

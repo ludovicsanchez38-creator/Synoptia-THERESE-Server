@@ -7,7 +7,7 @@ No heavy dependencies (Qdrant, sentence_transformers, scoring).
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel

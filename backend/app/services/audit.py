@@ -7,7 +7,7 @@ US-SEC-05: Logs d'activite
 """
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from enum import Enum
 
 from sqlalchemy.ext.asyncio import AsyncSession

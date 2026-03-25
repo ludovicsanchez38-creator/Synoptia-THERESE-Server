@@ -7,19 +7,20 @@ Dégradation gracieuse si les providers LLM ne sont pas disponibles.
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import AsyncGenerator
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.auth.rbac import CurrentUser
 from app.auth.tenant import get_owned
 from app.config import settings
 from app.models.database import get_session
 from app.models.entities import Conversation, Message
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

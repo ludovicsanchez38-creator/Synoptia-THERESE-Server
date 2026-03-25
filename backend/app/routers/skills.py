@@ -6,6 +6,10 @@ API endpoints pour la génération de documents via skills.
 
 import logging
 
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
+from sqlmodel.ext.asyncio.session import AsyncSession
+
 from app.models.database import get_session
 from app.models.entities import Contact, Project
 from app.models.schemas_skills import ExecuteSkillRequest, SkillInfo
@@ -18,9 +22,6 @@ from app.services.skills import (
 from app.services.skills.base import SkillOutputType
 from app.services.skills.model_capability import get_model_capability
 from app.services.user_profile import get_cached_profile
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse
-from sqlmodel.ext.asyncio.session import AsyncSession
 
 logger = logging.getLogger(__name__)
 

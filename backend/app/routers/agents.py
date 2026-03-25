@@ -6,7 +6,12 @@ Endpoints pour le système d'agents IA embarqués (Atelier).
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import func, select
 
 from app.models.database import get_session
 from app.models.entities_agents import AgentMessage, AgentTask
@@ -23,10 +28,6 @@ from app.models.schemas_agents import (
 )
 from app.services.agents.git_service import GitService
 from app.services.agents.swarm import SwarmOrchestrator
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import func, select
 
 logger = logging.getLogger(__name__)
 

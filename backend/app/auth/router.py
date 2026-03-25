@@ -6,14 +6,20 @@ Endpoints : login, register, me, refresh, logout, charter.
 
 import json
 import logging
-from datetime import UTC, datetime
+import time
+from collections import defaultdict
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.auth.backend import (
     authenticate_user,
     create_access_token,
     create_refresh_token,
     create_user,
-    hash_password,
     log_audit,
     revoke_refresh_token,
     store_refresh_token,
@@ -22,15 +28,6 @@ from app.auth.backend import (
 from app.auth.models import Organization, User, UserRole
 from app.auth.rbac import CurrentUser, RequireAdmin
 from app.models.database import get_session
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, EmailStr
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
-
-from app.rate_limit import HAS_SLOWAPI, limiter
-
-import time
-from collections import defaultdict
 
 # Rate limit login: 5 tentatives par minute par IP (SEC-015)
 _login_attempts: dict[str, list[float]] = defaultdict(list)
@@ -322,6 +319,8 @@ async def list_users(
             "name": u.name,
             "role": u.role,
             "is_active": u.is_active,
+            "charter_accepted": u.charter_accepted,
+            "charter_accepted_at": u.charter_accepted_at.isoformat() if u.charter_accepted_at else None,
             "last_login": u.last_login,
             "created_at": u.created_at,
         }

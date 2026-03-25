@@ -7,7 +7,11 @@ US-PERS-01 to US-PERS-05.
 
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
 
 from app.models.database import get_session
 from app.models.entities import Preference, PromptTemplate
@@ -18,9 +22,6 @@ from app.models.schemas_personalisation import (
     PromptTemplateResponse,
     PromptTemplateUpdate,
 )
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 

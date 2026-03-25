@@ -11,11 +11,12 @@ import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import select
+
 from app.models.entities import Preference
 from app.services.encryption import decrypt_value, encrypt_value, is_value_encrypted
 from app.services.qdrant import get_qdrant_service
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +160,7 @@ async def set_user_profile(
     Returns:
         The saved profile
     """
-    from datetime import UTC, datetime
+    from datetime import datetime
 
     try:
         # Get or create preference (BUG-026 : aligner sur key + category)

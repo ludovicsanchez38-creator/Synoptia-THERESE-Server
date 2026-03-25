@@ -7,18 +7,19 @@ Tous les endpoints necessitent le role admin.
 
 import json
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime
 
-from app.auth.backend import log_audit
-from app.auth.models import AuditLog, Organization, User, UserRole
-from app.auth.rbac import CurrentUser, RequireAdmin
-from app.models.database import get_session
-from app.models.entities import Contact, Conversation, Message
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+
+from app.auth.backend import log_audit
+from app.auth.models import AuditLog, Organization, User, UserRole
+from app.auth.rbac import RequireAdmin
+from app.models.database import get_session
+from app.models.entities import Contact, Conversation, Message
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from "react";
 import { useChatStore } from "../../stores/chatStore";
+import { useAuthStore } from "../../stores/authStore";
 import TemplateSelector from "./TemplateSelector";
 
 const MODELS = [
@@ -16,6 +17,7 @@ export default function ChatInput() {
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [showModels, setShowModels] = useState(false);
   const { send, isSending, currentConversationId } = useChatStore();
+  const { user } = useAuthStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelRef = useRef<HTMLDivElement>(null);
 
@@ -69,7 +71,8 @@ export default function ChatInput() {
     >
       {/* Barre de sélection modèle + templates */}
       <div className="flex items-center gap-2 max-w-4xl mx-auto mb-2">
-        {/* Sélecteur de modèle LLM */}
+        {/* Sélecteur de modèle LLM (masqué pour les agents) */}
+        {user?.role !== "agent" && (
         <div ref={modelRef} className="relative">
           <button
             type="button"
@@ -108,6 +111,7 @@ export default function ChatInput() {
             </div>
           )}
         </div>
+        )}
 
         {/* Sélecteur de templates */}
         <TemplateSelector onSelect={handleTemplateSelect} />
