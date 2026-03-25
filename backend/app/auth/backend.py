@@ -96,6 +96,13 @@ async def get_user_by_id(session: AsyncSession, user_id: str) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def get_user_by_email(session: AsyncSession, email: str) -> User | None:
+    """Get a user by email."""
+    stmt = select(User).where(User.email == email)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
 async def create_user(
     session: AsyncSession,
     email: str,

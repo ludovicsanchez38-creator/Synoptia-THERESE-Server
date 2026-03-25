@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./stores/authStore";
 import CharterModal from "./components/CharterModal";
 import Spinner from "./components/ui/Spinner";
+import ToastContainer from "./components/ui/Toast";
 
 // Lazy-loaded pages (code splitting)
 const LoginPage = lazy(() => import("./pages/Login"));
@@ -89,6 +90,7 @@ export default function App() {
       />
       <Route path="*" element={<Navigate to="/chat" replace />} />
     </Routes>
+    <ToastContainer />
     </Suspense>
   );
 }

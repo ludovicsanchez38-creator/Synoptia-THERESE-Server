@@ -77,6 +77,16 @@ export default function LoginPage() {
             />
           </div>
 
+          <p className="text-right text-xs mb-4">
+            <button
+              type="button"
+              onClick={() => alert("Contactez votre administrateur pour reinitialiser votre mot de passe.")}
+              className="text-[var(--color-cyan)] hover:underline"
+            >
+              Mot de passe oublie ?
+            </button>
+          </p>
+
           <button
             type="submit"
             disabled={loading}

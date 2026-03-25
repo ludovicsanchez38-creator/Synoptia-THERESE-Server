@@ -6,6 +6,7 @@ Endpoints : login, register, me, refresh, logout, charter.
 
 import json
 import logging
+import re as _re
 import time
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -85,6 +86,20 @@ class CreateOrgRequest(BaseModel):
     name: str
     slug: str
     max_users: int = 50
+
+
+# --- Password policy ---
+
+
+def _validate_password(password: str) -> str:
+    """Valide la politique de mot de passe (min 8 chars, 1 majuscule, 1 chiffre)."""
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 8 caracteres")
+    if not _re.search(r"[A-Z]", password):
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins une majuscule")
+    if not _re.search(r"[0-9]", password):
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins un chiffre")
+    return password
 
 
 # --- Endpoints ---
@@ -262,6 +277,8 @@ async def create_user_endpoint(
             detail="Un utilisateur avec cet email existe déjà",
         )
 
+    _validate_password(body.password)
+
     org_id = body.org_id or current_user.org_id
     user = await create_user(
         session=session,
@@ -349,3 +366,107 @@ async def create_organization(
     await session.refresh(org)
 
     return {"id": org.id, "name": org.name, "slug": org.slug}
+
+
+# --- Reset password ---
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Demande de reinitialisation de mot de passe.
+    Genere un token JWT valable 1h.
+    Note : retourne toujours 200 pour ne pas reveler si l'email existe.
+    """
+    from app.auth.backend import get_user_by_email
+
+    user = await get_user_by_email(session, request.email)
+    if user:
+        # Generer un token de reset (JWT avec expiration 1h)
+        from jose import jwt
+
+        from app.config import settings
+
+        token = jwt.encode(
+            {"sub": user.id, "type": "reset", "exp": datetime.now(UTC).timestamp() + 3600},
+            settings.jwt_secret,
+            algorithm="HS256",
+        )
+        # TODO: Envoyer le token par email quand le service email est configure
+        # Pour l'instant, on log le token (dev only, visible dans les logs serveur)
+        logger.info("Reset token genere pour %s : %s", user.email, token)
+
+        # En mode dev, on stocke le token dans les logs d'audit
+        await log_audit(
+            session=session,
+            user_id=user.id,
+            org_id=user.org_id,
+            action="password_reset_requested",
+            resource="auth",
+            details_json=json.dumps({"email": user.email}),
+        )
+
+    return {"message": "Si un compte existe avec cet email, un lien de reinitialisation a ete envoye."}
+
+
+@router.post("/reset-password")
+async def reset_password(
+    request: ResetPasswordRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Reinitialise le mot de passe avec un token valide.
+    """
+    from jose import jwt
+
+    from app.config import settings
+
+    try:
+        payload = jwt.decode(request.token, settings.jwt_secret, algorithms=["HS256"])
+        if payload.get("type") != "reset":
+            raise HTTPException(status_code=400, detail="Token invalide")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=400, detail="Le lien de reinitialisation a expire (1h)")
+    except jwt.JWTError:
+        raise HTTPException(status_code=400, detail="Token invalide")
+
+    # Valider le nouveau mot de passe
+    _validate_password(request.new_password)
+
+    # Trouver l'utilisateur
+    user = await session.get(User, payload["sub"])
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+
+    # Mettre a jour le mot de passe
+    import bcrypt
+
+    user.hashed_password = bcrypt.hashpw(
+        request.new_password.encode("utf-8"),
+        bcrypt.gensalt(),
+    ).decode("utf-8")
+
+    await session.commit()
+
+    # Audit
+    await log_audit(
+        session=session,
+        user_id=user.id,
+        org_id=user.org_id,
+        action="password_reset_completed",
+        resource="auth",
+    )
+
+    return {"message": "Mot de passe reinitialise avec succes."}

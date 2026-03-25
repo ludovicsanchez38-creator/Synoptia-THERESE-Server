@@ -10,18 +10,16 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# --- Etape 2 : Serveur statique ---
-FROM node:22-alpine
-WORKDIR /app
+# --- Etape 2 : Serveur nginx ---
+FROM nginx:alpine
 
-RUN npm install -g serve@14
+# Copier le build React
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copier uniquement le build final (image legere)
-COPY --from=build /app/dist ./dist
+# Config nginx pour SPA (fallback index.html) + gzip + cache
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD wget --spider -q http://localhost:3000/ || exit 1
-
-CMD ["serve", "-s", "dist", "-l", "3000"]

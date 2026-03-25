@@ -7,6 +7,7 @@ import {
   completeTask,
   type Task,
 } from "../services/api/taskService";
+import { useToastStore } from "../stores/toastStore";
 
 type StatusFilter = "all" | "todo" | "in_progress" | "done";
 
@@ -79,8 +80,9 @@ export default function TasksPage() {
       setTasks((prev) => [task, ...prev]);
       setFormData({ title: "", description: "", priority: "medium" });
       setShowForm(false);
+      useToastStore.getState().addToast("success", "Tâche créée");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur de cr\u00e9ation");
+      setError(err instanceof Error ? err.message : "Erreur de création");
     } finally {
       setSubmitting(false);
     }
@@ -99,6 +101,7 @@ export default function TasksPage() {
     try {
       await deleteTask(id);
       setTasks((prev) => prev.filter((t) => t.id !== id));
+      useToastStore.getState().addToast("success", "Tâche supprimée");
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Erreur de suppression"

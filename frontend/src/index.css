@@ -25,3 +25,10 @@ body {
 .prose-invert pre code { background: none; padding: 0; }
 .prose-invert a { color: var(--color-cyan); text-decoration: underline; }
 .prose-invert blockquote { border-left: 3px solid var(--color-primary); padding-left: 1em; opacity: 0.8; }
+
+/* Toast slide-in animation */
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in { animation: slide-in 0.3s ease-out; }

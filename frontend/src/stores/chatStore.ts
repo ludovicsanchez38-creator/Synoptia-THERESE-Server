@@ -7,6 +7,7 @@ import {
 } from "../services/api/chatService";
 import type { Conversation, Message } from "../services/api/chatService";
 import { getToken } from "../services/api/authService";
+import { useToastStore } from "./toastStore";
 
 interface ChatState {
   conversations: Conversation[];
@@ -198,10 +199,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ),
       }));
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Erreur d'envoi";
       set({
-        error: err instanceof Error ? err.message : "Erreur d'envoi",
+        error: errorMsg,
         isSending: false,
       });
+      useToastStore.getState().addToast("error", "Erreur d'envoi du message");
     }
   },
 

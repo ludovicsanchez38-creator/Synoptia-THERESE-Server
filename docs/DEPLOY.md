@@ -278,3 +278,28 @@ docker compose logs -f backend
 docker compose down -v
 ./scripts/first-run.sh
 ```
+
+## Sauvegardes automatiques
+
+### Configurer le cron (quotidien 3h00)
+
+```bash
+# Editer le crontab
+crontab -e
+
+# Ajouter cette ligne :
+0 3 * * * /home/ubuntu/therese-server/scripts/backup-db.sh >> /home/ubuntu/therese-server/data/backups/backup.log 2>&1
+```
+
+### Backup externe (optionnel)
+
+```bash
+# Configurer rclone puis :
+BACKUP_REMOTE=myremote:bucket/therese /home/ubuntu/therese-server/scripts/backup-db.sh
+```
+
+### Restauration
+
+```bash
+./scripts/restore-db.sh data/backups/therese_pg_YYYYMMDD_HHMMSS.sql.gz
+```

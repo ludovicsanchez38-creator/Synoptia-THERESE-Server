@@ -10,6 +10,7 @@ import {
   type Contact,
   type PipelineStats,
 } from "../services/api/crmService";
+import { useToastStore } from "../stores/toastStore";
 
 type CrmTab = "contacts" | "pipeline" | "activities";
 
@@ -97,9 +98,10 @@ export default function CRMPage() {
       setContacts((prev) => [contact, ...prev]);
       setContactForm({ name: "", email: "", phone: "", organization: "" });
       setShowContactForm(false);
+      useToastStore.getState().addToast("success", "Contact créé");
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Erreur de cr\u00e9ation"
+        err instanceof Error ? err.message : "Erreur de création"
       );
     } finally {
       setSubmitting(false);
