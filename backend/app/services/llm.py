@@ -35,6 +35,7 @@ from app.services.providers import (
     ToolCall,
     ToolResult,
 )
+from app.services.retry import retry_stream
 
 logger = logging.getLogger(__name__)
 
@@ -455,13 +456,16 @@ AUTORISÉ : les listes à puces (- point clé : valeur).
             messages = context.to_openai_format()
             system_prompt = context.system_prompt
 
-        # Pass enable_grounding to Gemini provider
-        if self.config.provider == LLMProvider.GEMINI:
-            async for event in self._provider.stream(system_prompt, messages, tools, enable_grounding=enable_grounding):
-                yield event
-        else:
-            async for event in self._provider.stream(system_prompt, messages, tools):
-                yield event
+        # Stream avec retry et circuit breaker
+        provider_name = self.config.provider.value if hasattr(self.config.provider, "value") else str(self.config.provider)
+
+        def stream_fn():
+            if self.config.provider == LLMProvider.GEMINI:
+                return self._provider.stream(system_prompt, messages, tools, enable_grounding=enable_grounding)
+            return self._provider.stream(system_prompt, messages, tools)
+
+        async for event in retry_stream(stream_fn, provider_name=provider_name, max_retries=2):
+            yield event
 
     async def continue_with_tool_results(
         self,

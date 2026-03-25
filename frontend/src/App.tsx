@@ -10,6 +10,7 @@ const ChatPage = lazy(() => import("./pages/Chat"));
 const TasksPage = lazy(() => import("./pages/Tasks"));
 const CRMPage = lazy(() => import("./pages/CRM"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const LegalPage = lazy(() => import("./pages/Legal"));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
@@ -85,6 +86,7 @@ export default function App() {
           </AdminRoute>
         }
       />
+      <Route path="/legal" element={<LegalPage />} />
       <Route path="*" element={<Navigate to="/chat" replace />} />
     </Routes>
     </Suspense>

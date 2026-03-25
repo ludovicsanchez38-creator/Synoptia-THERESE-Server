@@ -1,5 +1,5 @@
 import { useState, useEffect, FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
 
 export default function LoginPage() {
@@ -88,6 +88,8 @@ export default function LoginPage() {
 
         <p className="text-center text-xs text-[var(--color-muted)] mt-8">
           Thérèse Server v0.1.0 - Synoptïa
+          <br />
+          <Link to="/legal" className="hover:underline">Mentions légales</Link>
         </p>
       </div>
     </div>
