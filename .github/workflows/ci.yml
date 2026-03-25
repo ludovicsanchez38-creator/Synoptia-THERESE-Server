@@ -49,6 +49,7 @@ jobs:
           SECRET_KEY: test-secret-key-ci
           JWT_SECRET: test-jwt-secret-ci
           ENCRYPTION_KEY: dGVzdC1lbmNyeXB0aW9uLWtleS1jaQ==
+          DATA_DIR: /tmp/therese-test
           DEBUG: "true"
         run: |
           pytest tests/test_agents.py tests/test_command_registry.py \
