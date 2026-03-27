@@ -41,6 +41,14 @@ async def lifespan(app: FastAPI):
 
     # Initialiser la base de données
     await init_db()
+
+    # Init skills registry
+    try:
+        from app.services.skills.registry import init_skills
+        await init_skills()
+        logger.info("Skills registry initialized")
+    except Exception as e:
+        logger.warning("Skills init failed: %s", e)
     logger.info("Base de données initialisée")
 
     # Initialiser Qdrant si configuré

@@ -423,7 +423,7 @@ function AdvisorCard({ advisor }: { advisor: AdvisorState }) {
     >
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-xl">{advisor.emoji}</span>
+        {ADVISOR_SVGS[advisor.role] || advisor.emoji}
         <span className="text-sm font-semibold text-[var(--color-text)]">
           {advisor.name}
         </span>
@@ -625,7 +625,7 @@ function HistoryTab({
               className="p-4 bg-slate-800/20 border border-slate-700 rounded-xl"
             >
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">{opinion.emoji}</span>
+                {ADVISOR_SVGS[opinion.role] || opinion.role}
                 <span className="text-sm font-semibold text-[var(--color-text)]">
                   {opinion.name}
                 </span>

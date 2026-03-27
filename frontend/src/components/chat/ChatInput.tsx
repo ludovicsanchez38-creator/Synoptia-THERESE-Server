@@ -7,10 +7,16 @@ import VoiceRecorder from "./VoiceRecorder";
 const MODELS = [
   { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "Anthropic" },
   { id: "claude-opus-4-6", name: "Claude Opus 4.6", provider: "Anthropic" },
-  { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI" },
+  { id: "gpt-5.2", name: "GPT-5.2", provider: "OpenAI" },
+  { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash", provider: "Google" },
   { id: "mistral-large-latest", name: "Mistral Large", provider: "Mistral" },
-  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", provider: "Google" },
-  { id: "mistral:7b", name: "Mistral 7B (local)", provider: "Ollama" },
+  { id: "grok-4", name: "Grok 4", provider: "xAI" },
+  { id: "mistral-nemo", name: "Mistral Nemo (local)", provider: "Ollama" },
+];
+
+
+const AGENTS = [
+  { prefix: "@conformite", name: "Vérificateur de conformité", description: "Analyse un document au regard du CGCT" },
 ];
 
 /** Préfixes @mention reconnus pour les missions agents. */
@@ -38,6 +44,8 @@ export default function ChatInput() {
   const [content, setContent] = useState("");
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [showModels, setShowModels] = useState(false);
+  const [showAgents, setShowAgents] = useState(false);
+  const agentRef = useRef<HTMLDivElement>(null);
   const { send, isSending, currentConversationId, launchMission } = useChatStore();
   const { user } = useAuthStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -62,6 +70,9 @@ export default function ChatInput() {
     const handleClick = (e: MouseEvent) => {
       if (modelRef.current && !modelRef.current.contains(e.target as Node)) {
         setShowModels(false);
+      }
+      if (agentRef.current && !agentRef.current.contains(e.target as Node)) {
+        setShowAgents(false);
       }
     };
     document.addEventListener("mousedown", handleClick);
@@ -162,6 +173,26 @@ export default function ChatInput() {
 
         {/* Sélecteur de templates */}
         <TemplateSelector onSelect={handleTemplateSelect} />
+
+        {/* Selecteur d agents */}
+        <div ref={agentRef} className="relative">
+          <button type="button" onClick={() => setShowAgents(!showAgents)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-slate-800/70 border border-slate-700 rounded-lg hover:border-emerald-500/50 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+            <span className="text-emerald-400">Agents</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          {showAgents && (
+            <div className="absolute bottom-full left-0 mb-1 w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden">
+              <div className="p-2 border-b border-slate-800 text-xs text-[var(--color-muted)]">Agents autonomes</div>
+              {AGENTS.map((agent) => (
+                <button key={agent.prefix} type="button" onClick={() => { setContent(agent.prefix + " "); setShowAgents(false); setTimeout(() => textareaRef.current?.focus(), 50); }} className="w-full px-3 py-2.5 text-left hover:bg-slate-800 transition-colors flex items-start gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-cyan)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+                  <div><div className="text-sm text-[var(--color-text)]">{agent.name}</div><div className="text-xs text-[var(--color-muted)]">{agent.description}</div></div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Input + bouton envoyer */}

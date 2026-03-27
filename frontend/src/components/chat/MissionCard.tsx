@@ -10,15 +10,15 @@ import Spinner from "../ui/Spinner";
 import { cancelMission } from "../../services/api/missionService";
 
 /** Labels et icônes par type de mission. */
-const MISSION_META: Record<string, { label: string; icon: string }> = {
-  conformity: { label: "Agent Conformité", icon: "\u{1F6E1}" },
-  research: { label: "Agent Recherche", icon: "\u{1F50D}" },
-  document: { label: "Agent Rédaction", icon: "\u{1F4DD}" },
-  crm: { label: "Agent CRM", icon: "\u{1F4CA}" },
+const MISSION_META: Record<string, { label: string; icon?: string }> = {
+  conformity: { label: "Agent Conformité", icon: "" },
+  research: { label: "Agent Recherche", icon: "" },
+  document: { label: "Agent Rédaction", icon: "" },
+  crm: { label: "Agent CRM", icon: "" },
 };
 
 function getMeta(missionType: string) {
-  return MISSION_META[missionType] || { label: "Agent", icon: "\u{1F916}" };
+  return MISSION_META[missionType] || { label: "Agent", icon: "" };
 }
 
 interface MissionCardProps {
@@ -60,7 +60,7 @@ export default function MissionCard({
         {/* En-tête : icône agent + nom + badge statut */}
         <div className="flex items-center gap-2 mb-2">
           <span className="text-base" role="img" aria-label={meta.label}>
-            {meta.icon}
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-cyan)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
           </span>
           <span className="text-xs font-medium text-[var(--color-cyan)]">
             {meta.label}
