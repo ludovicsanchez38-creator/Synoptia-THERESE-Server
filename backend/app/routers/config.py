@@ -90,7 +90,7 @@ _AVAILABLE_MODELS: list[dict] = [
         "description": "Modèle le plus puissant Anthropic.",
     },
     {
-        "id": "gemini-3.1-flash-lite",
+        "id": "gemini-3.1-flash-lite-preview",
         "name": "Gemini 3.1 Flash Lite",
         "provider": "google",
         "context_window": 1000000,
