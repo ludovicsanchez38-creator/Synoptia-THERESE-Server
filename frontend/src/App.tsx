@@ -10,8 +10,10 @@ const LoginPage = lazy(() => import("./pages/Login"));
 const ChatPage = lazy(() => import("./pages/Chat"));
 const TasksPage = lazy(() => import("./pages/Tasks"));
 const CRMPage = lazy(() => import("./pages/CRM"));
+const BoardPage = lazy(() => import("./pages/Board"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 const Legal = lazy(() => import("./pages/Legal"));
+const SkillsPage = lazy(() => import("./pages/Skills"));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuthStore();
@@ -73,10 +75,26 @@ export default function App() {
         }
       />
       <Route
+        path="/skills"
+        element={
+          <PrivateRoute>
+            <SkillsPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
         path="/crm"
         element={
           <PrivateRoute>
             <CRMPage />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/board"
+        element={
+          <PrivateRoute>
+            <BoardPage />
           </PrivateRoute>
         }
       />

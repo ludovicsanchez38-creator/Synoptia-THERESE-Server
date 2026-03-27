@@ -323,6 +323,12 @@ Les admins voient les utilisateurs de leur organisation.
     from app.routers.search import router as search_router
     app.include_router(search_router)
 
+    try:
+        from app.routers.voice import router as voice_router
+        app.include_router(voice_router, prefix="/api/voice", tags=["voice"])
+    except (ImportError, AttributeError) as e:
+        logger.warning("Router voice disabled: %s", e)
+
     return app
 
 
