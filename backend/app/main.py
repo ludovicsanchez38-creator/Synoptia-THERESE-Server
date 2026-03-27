@@ -259,6 +259,9 @@ Les admins voient les utilisateurs de leur organisation.
     from app.routers.admin import router as admin_router
     app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 
+    from app.routers.agents import router as agents_router
+    app.include_router(agents_router, prefix="/api/agents", tags=["agents"])
+
     from app.routers.rgpd import router as rgpd_router
     app.include_router(rgpd_router, prefix="/api/rgpd", tags=["rgpd"])
 
@@ -313,6 +316,10 @@ Les admins voient les utilisateurs de leur organisation.
         logger.warning("Router skills disabled: %s", e)
 
     # Recherche globale
+
+    # Missions autonomes (agents)
+    from app.routers.missions import router as missions_router
+    app.include_router(missions_router, prefix="/api/missions", tags=["missions"])
     from app.routers.search import router as search_router
     app.include_router(search_router)
 

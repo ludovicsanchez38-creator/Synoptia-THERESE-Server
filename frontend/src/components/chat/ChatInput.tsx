@@ -12,17 +12,41 @@ const MODELS = [
   { id: "mistral:7b", name: "Mistral 7B (local)", provider: "Ollama" },
 ];
 
+/** Préfixes @mention reconnus pour les missions agents. */
+const MISSION_PREFIXES: { pattern: RegExp; missionType: string }[] = [
+  { pattern: /^@conformit[ée]\s+/i, missionType: "conformity" },
+];
+
+/**
+ * Détecte si le message commence par une @mention de mission.
+ * Retourne le type de mission et le texte nettoyé, ou null.
+ */
+function detectMission(text: string): { missionType: string; inputText: string } | null {
+  for (const { pattern, missionType } of MISSION_PREFIXES) {
+    if (pattern.test(text)) {
+      const inputText = text.replace(pattern, "").trim();
+      if (inputText.length > 0) {
+        return { missionType, inputText };
+      }
+    }
+  }
+  return null;
+}
+
 export default function ChatInput() {
   const [content, setContent] = useState("");
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [showModels, setShowModels] = useState(false);
-  const { send, isSending, currentConversationId } = useChatStore();
+  const { send, isSending, currentConversationId, launchMission } = useChatStore();
   const { user } = useAuthStore();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelRef = useRef<HTMLDivElement>(null);
 
   const canSend = content.trim().length > 0 && !isSending && !!currentConversationId;
   const currentModel = MODELS.find((m) => m.id === selectedModel) || MODELS[0];
+
+  // Détection live pour afficher un indicateur visuel
+  const missionDetected = detectMission(content.trim());
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -48,7 +72,15 @@ export default function ChatInput() {
     if (!canSend) return;
     const msg = content.trim();
     setContent("");
-    await send(msg, selectedModel);
+
+    // Vérifier si c'est une @mention de mission
+    const mission = detectMission(msg);
+    if (mission) {
+      await launchMission(mission.missionType, mission.inputText);
+    } else {
+      await send(msg, selectedModel);
+    }
+
     textareaRef.current?.focus();
   };
 
@@ -69,6 +101,15 @@ export default function ChatInput() {
       onSubmit={handleSubmit}
       className="p-3 md:p-4 border-t border-slate-800 bg-[var(--color-bg)]"
     >
+      {/* Indicateur mission détectée */}
+      {missionDetected && (
+        <div className="flex items-center gap-2 max-w-4xl mx-auto mb-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+          <span className="text-amber-400 text-xs">
+            {"🛡️"} Mission <strong>{missionDetected.missionType}</strong> - sera envoyée à l{"'"}agent
+          </span>
+        </div>
+      )}
+
       {/* Barre de sélection modèle + templates */}
       <div className="flex items-center gap-2 max-w-4xl mx-auto mb-2">
         {/* Sélecteur de modèle LLM (masqué pour les agents) */}
@@ -126,7 +167,7 @@ export default function ChatInput() {
           onKeyDown={handleKeyDown}
           placeholder={
             currentConversationId
-              ? "Écrivez votre message... (Entrée pour envoyer)"
+              ? "Écrivez votre message... (@conformité pour lancer un agent)"
               : "Sélectionnez une conversation"
           }
           disabled={!currentConversationId}

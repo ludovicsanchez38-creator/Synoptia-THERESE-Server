@@ -87,6 +87,14 @@ class OrgSettingsUpdateRequest(BaseModel):
     settings: dict | None = None
 
 
+class MissionStatsResponse(BaseModel):
+    total_missions: int
+    by_status: dict[str, int]
+    active_missions: int
+    total_tokens_used: int
+    total_cost_eur: float
+
+
 # --- Endpoints ---
 
 
@@ -424,4 +432,63 @@ async def update_org_settings(
         max_tokens_per_day=org.max_tokens_per_day,
         is_active=org.is_active,
         settings=settings_dict,
+    )
+
+
+
+@router.get("/missions/stats", response_model=MissionStatsResponse)
+async def get_missions_stats(
+    current_user: User = RequireAdmin,
+    session: AsyncSession = Depends(get_session),
+):
+    """Statistiques des missions autonomes pour l'organisation."""
+    from app.models.entities_missions import Mission, MissionStatus
+
+    org_id = current_user.org_id
+
+    # Total missions
+    result = await session.execute(
+        select(func.count(Mission.id)).where(Mission.org_id == org_id)
+    )
+    total_missions = result.scalar_one()
+
+    # Par status
+    by_status = {}
+    for status in MissionStatus:
+        result = await session.execute(
+            select(func.count(Mission.id)).where(
+                Mission.org_id == org_id,
+                Mission.status == status.value,
+            )
+        )
+        count = result.scalar_one()
+        if count > 0:
+            by_status[status.value] = count
+
+    # Missions actives (pending + running)
+    result = await session.execute(
+        select(func.count(Mission.id)).where(
+            Mission.org_id == org_id,
+            Mission.status.in_([MissionStatus.PENDING.value, MissionStatus.RUNNING.value]),
+        )
+    )
+    active_missions = result.scalar_one()
+
+    # Tokens et couts totaux
+    result = await session.execute(
+        select(func.coalesce(func.sum(Mission.tokens_used), 0)).where(Mission.org_id == org_id)
+    )
+    total_tokens_used = result.scalar_one()
+
+    result = await session.execute(
+        select(func.coalesce(func.sum(Mission.cost_eur), 0)).where(Mission.org_id == org_id)
+    )
+    total_cost_eur = float(result.scalar_one())
+
+    return MissionStatsResponse(
+        total_missions=total_missions,
+        by_status=by_status,
+        active_missions=active_missions,
+        total_tokens_used=total_tokens_used,
+        total_cost_eur=total_cost_eur,
     )

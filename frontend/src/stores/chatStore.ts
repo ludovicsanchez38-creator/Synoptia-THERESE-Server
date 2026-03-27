@@ -7,7 +7,23 @@ import {
 } from "../services/api/chatService";
 import type { Conversation, Message } from "../services/api/chatService";
 import { getToken } from "../services/api/authService";
+import {
+  startMission as apiStartMission,
+  pollMission as apiPollMission,
+  cancelMission as apiCancelMission,
+} from "../services/api/missionService";
+import type { MissionPollResponse } from "../services/api/missionService";
 import { useToastStore } from "./toastStore";
+
+/** État d'une mission active visible dans le chat. */
+export interface ActiveMission {
+  id: string;
+  missionType: string;
+  status: string;
+  progress: number;
+  resultContent: string | null;
+  error: string | null;
+}
 
 interface ChatState {
   conversations: Conversation[];
@@ -18,6 +34,9 @@ interface ChatState {
   isSending: boolean;
   error: string | null;
 
+  /** Missions actives indexées par mission ID. */
+  activeMissions: Record<string, ActiveMission>;
+
   loadConversations: () => Promise<void>;
   selectConversation: (id: string) => Promise<void>;
   newConversation: (title?: string) => Promise<void>;
@@ -25,7 +44,15 @@ interface ChatState {
   send: (content: string, model?: string) => Promise<void>;
   clearError: () => void;
   reset: () => void;
+
+  /** Lancer une mission agent depuis le chat. */
+  launchMission: (missionType: string, inputText: string) => Promise<void>;
+  /** Annuler une mission en cours. */
+  cancelActiveMission: (missionId: string) => Promise<void>;
 }
+
+/** Intervalles de polling actifs (nettoyés à l'annulation ou fin). */
+const _pollingIntervals: Record<string, ReturnType<typeof setInterval>> = {};
 
 export const useChatStore = create<ChatState>((set, get) => ({
   conversations: [],
@@ -35,6 +62,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isLoadingMessages: false,
   isSending: false,
   error: null,
+  activeMissions: {},
 
   loadConversations: async () => {
     set({ isLoadingConversations: true, error: null });
@@ -208,6 +236,105 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
+  launchMission: async (missionType: string, inputText: string) => {
+    const { currentConversationId } = get();
+
+    // Créer une conversation si aucune n'est active
+    if (!currentConversationId) {
+      await get().newConversation("Mission agent");
+    }
+    const convId = get().currentConversationId;
+
+    // Ajouter le message utilisateur dans le chat (optimistic)
+    const tempUserMsg: Message = {
+      id: `temp-mission-user-${Date.now()}`,
+      role: "user",
+      content: `@${missionType} ${inputText}`,
+      created_at: new Date().toISOString(),
+    };
+    set((state) => ({
+      messages: [...state.messages, tempUserMsg],
+    }));
+
+    try {
+      const result = await apiStartMission(
+        missionType,
+        inputText,
+        convId || undefined,
+      );
+
+      // Enregistrer la mission active
+      const mission: ActiveMission = {
+        id: result.id,
+        missionType,
+        status: result.status,
+        progress: 0,
+        resultContent: null,
+        error: null,
+      };
+
+      set((state) => ({
+        activeMissions: { ...state.activeMissions, [result.id]: mission },
+      }));
+
+      // Lancer le polling toutes les 3 secondes
+      const intervalId = setInterval(async () => {
+        try {
+          const poll: MissionPollResponse = await apiPollMission(result.id);
+
+          set((state) => ({
+            activeMissions: {
+              ...state.activeMissions,
+              [result.id]: {
+                ...state.activeMissions[result.id],
+                status: poll.status,
+                progress: poll.progress,
+                resultContent: poll.result_content,
+                error: poll.error,
+              },
+            },
+          }));
+
+          // Arrêter le polling si terminé
+          if (poll.status === "completed" || poll.status === "failed" || poll.status === "cancelled") {
+            clearInterval(intervalId);
+            delete _pollingIntervals[result.id];
+          }
+        } catch {
+          // Erreur réseau sur le poll, on continue
+        }
+      }, 3000);
+
+      _pollingIntervals[result.id] = intervalId;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Erreur de lancement de mission";
+      set({ error: errorMsg });
+      useToastStore.getState().addToast("error", errorMsg);
+    }
+  },
+
+  cancelActiveMission: async (missionId: string) => {
+    try {
+      await apiCancelMission(missionId);
+      // Arrêter le polling
+      if (_pollingIntervals[missionId]) {
+        clearInterval(_pollingIntervals[missionId]);
+        delete _pollingIntervals[missionId];
+      }
+      set((state) => ({
+        activeMissions: {
+          ...state.activeMissions,
+          [missionId]: {
+            ...state.activeMissions[missionId],
+            status: "cancelled",
+          },
+        },
+      }));
+    } catch {
+      // Le polling mettra à jour le statut
+    }
+  },
+
   clearError: () => set({ error: null }),
 
   reset: () =>
@@ -219,5 +346,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       isLoadingMessages: false,
       isSending: false,
       error: null,
+      activeMissions: {},
     }),
 }));

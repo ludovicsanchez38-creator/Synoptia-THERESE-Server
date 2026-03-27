@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
 
+from app.auth.rbac import CurrentUser
 from app.models.database import get_session
 from app.models.entities_agents import AgentMessage, AgentTask
 from app.models.schemas_agents import (
@@ -110,6 +111,7 @@ async def _save_message(session: AsyncSession, msg: AgentMessage) -> None:
 @router.post("/request")
 async def agent_request(
     request: AgentRequest,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Soumet une demande au swarm d'agents. Retourne un stream SSE."""
@@ -126,6 +128,8 @@ async def agent_request(
         description=request.message,
         status="in_progress",
         source_path=source_path,
+        user_id=current_user.id,
+        org_id=current_user.org_id,
     )
     await _save_task(session, task)
 
@@ -135,6 +139,8 @@ async def agent_request(
         agent="user",
         role="user",
         content=request.message,
+        user_id=current_user.id,
+        org_id=current_user.org_id,
     )
     await _save_message(session, user_msg)
 
@@ -212,19 +218,20 @@ async def agent_request(
 
 @router.get("/tasks")
 async def list_tasks(
+    current_user: CurrentUser,
     limit: int = 50,
     status: str | None = None,
     session: AsyncSession = Depends(get_session),
 ) -> AgentTaskListResponse:
     """Liste les tâches agents."""
-    query = select(AgentTask).order_by(AgentTask.created_at.desc()).limit(limit)
+    query = select(AgentTask).where(AgentTask.user_id == current_user.id).order_by(AgentTask.created_at.desc()).limit(limit)
     if status:
         query = query.where(AgentTask.status == status)
 
     result = await session.execute(query)
     tasks = result.scalars().all()
 
-    count_result = await session.execute(select(func.count(AgentTask.id)))
+    count_result = await session.execute(select(func.count(AgentTask.id)).where(AgentTask.user_id == current_user.id))
     total = count_result.scalar() or 0
 
     return AgentTaskListResponse(
@@ -236,11 +243,12 @@ async def list_tasks(
 @router.get("/tasks/{task_id}")
 async def get_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> AgentTaskResponse:
     """Détail d'une tâche agent."""
     result = await session.execute(
-        select(AgentTask).where(AgentTask.id == task_id)
+        select(AgentTask).where(AgentTask.id == task_id, AgentTask.user_id == current_user.id)
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -251,11 +259,12 @@ async def get_task(
 @router.get("/tasks/{task_id}/diff")
 async def get_task_diff(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> DiffResponse:
     """Récupère le diff complet d'une tâche pour review."""
     result = await session.execute(
-        select(AgentTask).where(AgentTask.id == task_id)
+        select(AgentTask).where(AgentTask.id == task_id, AgentTask.user_id == current_user.id)
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -305,11 +314,12 @@ async def get_task_diff(
 @router.post("/tasks/{task_id}/approve")
 async def approve_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Approuve et merge la branche d'une tâche."""
     result = await session.execute(
-        select(AgentTask).where(AgentTask.id == task_id)
+        select(AgentTask).where(AgentTask.id == task_id, AgentTask.user_id == current_user.id)
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -341,11 +351,12 @@ async def approve_task(
 @router.post("/tasks/{task_id}/reject")
 async def reject_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Rejette et supprime la branche d'une tâche."""
     result = await session.execute(
-        select(AgentTask).where(AgentTask.id == task_id)
+        select(AgentTask).where(AgentTask.id == task_id, AgentTask.user_id == current_user.id)
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -370,11 +381,12 @@ async def reject_task(
 @router.post("/tasks/{task_id}/rollback")
 async def rollback_task(
     task_id: str,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ):
     """Annule un merge précédent via git revert."""
     result = await session.execute(
-        select(AgentTask).where(AgentTask.id == task_id)
+        select(AgentTask).where(AgentTask.id == task_id, AgentTask.user_id == current_user.id)
     )
     task = result.scalar_one_or_none()
     if not task:
@@ -415,6 +427,7 @@ async def rollback_task(
 
 @router.get("/config")
 async def get_config(
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> AgentConfigResponse:
     """Récupère la configuration des agents avec les modèles disponibles."""
@@ -449,6 +462,7 @@ async def get_config(
 @router.put("/config")
 async def update_config(
     config: AgentConfigUpdate,
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> AgentConfigResponse:
     """Met à jour la configuration des agents."""
@@ -476,7 +490,7 @@ async def update_config(
     if updates:
         await session.commit()
 
-    return await get_config(session)
+    return await get_config(current_user, session)
 
 
 # ============================================================
@@ -486,6 +500,7 @@ async def update_config(
 
 @router.get("/status")
 async def get_status(
+    current_user: CurrentUser,
     session: AsyncSession = Depends(get_session),
 ) -> AgentStatusResponse:
     """Vérifie le statut du système d'agents."""
