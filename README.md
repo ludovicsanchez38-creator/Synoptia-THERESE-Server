@@ -17,6 +17,16 @@ Thérèse Server est la version serveur de [Thérèse](https://github.com/ludovi
 - **Secteur public** : 10 templates métier (délibérations, courriers, notes de synthèse, RH)
 - **Multi-LLM** : Claude, GPT, Gemini, Mistral, ou Ollama 100% local
 
+## Captures d'ecran
+
+| Connexion | Chat IA |
+|:-:|:-:|
+| ![Login](docs/images/login.png) | ![Chat](docs/images/chat.png) |
+
+| Administration | CRM / Contacts |
+|:-:|:-:|
+| ![Admin](docs/images/admin.png) | ![CRM](docs/images/crm.png) |
+
 ---
 
 ## Fonctionnalités

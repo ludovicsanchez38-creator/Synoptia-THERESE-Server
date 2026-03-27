@@ -64,7 +64,7 @@ class SkillResult(BaseModel):
     file_size: int = Field(..., description="Taille en octets")
     mime_type: str = Field(..., description="Type MIME du fichier")
     format: FileFormat = Field(..., description="Format du fichier")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
 
     class Config:
         arbitrary_types_allowed = True

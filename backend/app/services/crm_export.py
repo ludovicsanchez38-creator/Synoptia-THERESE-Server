@@ -317,7 +317,7 @@ class CRMExportService:
         result = await self.session.execute(statement)
         contacts = result.scalars().all()
 
-        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
 
         if format == "csv":
             data = export_to_csv(contacts, CONTACT_COLUMNS)
@@ -371,7 +371,7 @@ class CRMExportService:
         result = await self.session.execute(statement)
         projects = result.scalars().all()
 
-        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
 
         if format == "csv":
             data = export_to_csv(projects, PROJECT_COLUMNS)
@@ -425,7 +425,7 @@ class CRMExportService:
         result = await self.session.execute(statement)
         deliverables = result.scalars().all()
 
-        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
 
         if format == "csv":
             data = export_to_csv(deliverables, DELIVERABLE_COLUMNS)
@@ -481,7 +481,7 @@ class CRMExportService:
         )
         deliverables = deliverables_result.scalars().all()
 
-        timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
         total_count = len(contacts) + len(projects) + len(deliverables)
 
         if format == "xlsx":
@@ -514,7 +514,7 @@ class CRMExportService:
 
         elif format == "json":
             data = {
-                "export_date": datetime.now(UTC).isoformat(),
+                "export_date": datetime.utcnow().isoformat(),
                 "contacts": [
                     {attr: getattr(c, attr, None) for attr, _ in CONTACT_COLUMNS}
                     for c in contacts

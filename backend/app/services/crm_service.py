@@ -66,8 +66,8 @@ async def change_contact_stage(
     old_stage = contact.stage
 
     contact.stage = new_stage
-    contact.updated_at = datetime.now(UTC)
-    contact.last_interaction = datetime.now(UTC)
+    contact.updated_at = datetime.utcnow()
+    contact.last_interaction = datetime.utcnow()
     session.add(contact)
 
     # Creer une activite
@@ -337,7 +337,7 @@ async def upsert_sync_spreadsheet_id(
 
     if pref:
         pref.value = spreadsheet_id
-        pref.updated_at = datetime.now(UTC)
+        pref.updated_at = datetime.utcnow()
     else:
         pref = Preference(
             key="crm_spreadsheet_id",

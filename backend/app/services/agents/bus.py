@@ -23,7 +23,7 @@ class AgentMessage:
     type: str  # "request", "spec", "implementation_result", "review", "feedback", "clarification"
     content: str
     metadata: dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    timestamp: datetime = field(default_factory=lambda: datetime.utcnow())
 
 
 class AgentMessageBus:

@@ -163,7 +163,7 @@ async def export_contact_data(
         activities=activities_data,
         projects=projects_data,
         tasks=tasks_data,
-        exported_at=datetime.now(UTC),
+        exported_at=datetime.utcnow(),
     )
 
 
@@ -206,7 +206,7 @@ async def anonymize_contact(
     contact.company = "[ANONYMISÉ]"
     contact.stage = "archive"
     contact.extra_data = None
-    contact.updated_at = datetime.now(UTC)
+    contact.updated_at = datetime.utcnow()
 
     # Delete activities
     result = await session.execute(
@@ -286,7 +286,7 @@ async def renew_consent(
     if not contact:
         raise HTTPException(status_code=404, detail="Contact non trouvé")
 
-    now = datetime.now(UTC)
+    now = datetime.utcnow()
     new_expiration = now + timedelta(days=3 * 365)  # 3 ans
 
     contact.rgpd_base_legale = "consentement"
@@ -356,13 +356,13 @@ async def update_rgpd_fields(
 
     # Auto-set dates if not set
     if contact.rgpd_date_collecte is None:
-        contact.rgpd_date_collecte = contact.created_at or datetime.now(UTC)
+        contact.rgpd_date_collecte = contact.created_at or datetime.utcnow()
 
     if contact.rgpd_date_expiration is None:
-        base_date = contact.rgpd_date_collecte or datetime.now(UTC)
+        base_date = contact.rgpd_date_collecte or datetime.utcnow()
         contact.rgpd_date_expiration = base_date + timedelta(days=3 * 365)
 
-    contact.updated_at = datetime.now(UTC)
+    contact.updated_at = datetime.utcnow()
 
     await session.commit()
 
@@ -407,7 +407,7 @@ async def get_rgpd_stats(
     expires_ou_bientot = 0
     avec_consentement = 0
 
-    now = datetime.now(UTC)
+    now = datetime.utcnow()
     seuil_30j = now + timedelta(days=30)
 
     for contact in contacts:
@@ -479,7 +479,7 @@ async def infer_rgpd_base_legale(
         base_legale = "interet_legitime"
 
     # Set dates if not set
-    now = datetime.now(UTC)
+    now = datetime.utcnow()
     if not contact.rgpd_date_collecte:
         contact.rgpd_date_collecte = contact.created_at or now
 
@@ -666,7 +666,7 @@ async def export_user_data(
         tasks=tasks_data,
         files=files_data,
         preferences=prefs_data,
-        exported_at=datetime.now(UTC),
+        exported_at=datetime.utcnow(),
     )
 
 

@@ -435,8 +435,8 @@ async def index_file(
 
     # Mettre à jour les métadonnées
     file_meta.chunk_count = count
-    file_meta.indexed_at = datetime.now(UTC)
-    file_meta.updated_at = datetime.now(UTC)
+    file_meta.indexed_at = datetime.utcnow()
+    file_meta.updated_at = datetime.utcnow()
     session.add(file_meta)
 
     logger.info(

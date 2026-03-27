@@ -189,7 +189,7 @@ async def agent_request(
                     db_task.branch_name = branch_name
                     db_task.files_changed = json.dumps(files_changed, ensure_ascii=False) if files_changed else None
                     db_task.diff_summary = diff_summary
-                    db_task.updated_at = datetime.now(UTC)
+                    db_task.updated_at = datetime.utcnow()
                     await update_session.commit()
         except (OSError, ValueError, RuntimeError) as e:
             logger.error(f"Erreur mise à jour tâche: {e}")
@@ -331,8 +331,8 @@ async def approve_task(
 
     # Mettre à jour la tâche
     task.status = "merged"
-    task.merged_at = datetime.now(UTC)
-    task.updated_at = datetime.now(UTC)
+    task.merged_at = datetime.utcnow()
+    task.updated_at = datetime.utcnow()
     await session.commit()
 
     return {"status": "merged", "task_id": task_id}
@@ -361,7 +361,7 @@ async def reject_task(
         await git.delete_branch(task.branch_name)
 
     task.status = "rejected"
-    task.updated_at = datetime.now(UTC)
+    task.updated_at = datetime.utcnow()
     await session.commit()
 
     return {"status": "rejected", "task_id": task_id}
@@ -402,7 +402,7 @@ async def rollback_task(
         raise HTTPException(status_code=500, detail="Échec du rollback")
 
     task.status = "rejected"
-    task.updated_at = datetime.now(UTC)
+    task.updated_at = datetime.utcnow()
     await session.commit()
 
     return {"status": "rolled_back", "task_id": task_id}

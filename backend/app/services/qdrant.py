@@ -51,7 +51,7 @@ class QdrantService:
         import sys
         import time
 
-        qdrant_path = settings.qdrant_path
+        qdrant_path = settings.qdrant_url
         if qdrant_path is None:
             qdrant_path = settings.data_dir / "qdrant"
 

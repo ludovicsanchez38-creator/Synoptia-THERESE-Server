@@ -251,7 +251,7 @@ async def accept_charter(
     """Accepter la charte IA (obligatoire au premier login)."""
     current_user.charter_accepted = body.accepted
     if body.accepted:
-        current_user.charter_accepted_at = datetime.now(UTC)
+        current_user.charter_accepted_at = datetime.utcnow()
     session.add(current_user)
     await session.commit()
 
@@ -400,7 +400,7 @@ async def forgot_password(
         from app.config import settings
 
         token = jwt.encode(
-            {"sub": user.id, "type": "reset", "exp": datetime.now(UTC).timestamp() + 3600},
+            {"sub": user.id, "type": "reset", "exp": datetime.utcnow().timestamp() + 3600},
             settings.jwt_secret,
             algorithm="HS256",
         )

@@ -138,7 +138,7 @@ async def execute_create_contact(
             phone=arguments.get("phone"),
             role=arguments.get("role"),
             notes=arguments.get("notes"),
-            last_interaction=datetime.now(UTC),
+            last_interaction=datetime.utcnow(),
         )
         session.add(contact)
         await session.flush()

@@ -139,8 +139,8 @@ async def create_activity(
     )
     session.add(activity)
 
-    contact.last_interaction = datetime.now(UTC)
-    contact.updated_at = datetime.now(UTC)
+    contact.last_interaction = datetime.utcnow()
+    contact.updated_at = datetime.utcnow()
     session.add(contact)
 
     if request.type in ["email", "call", "meeting"]:
@@ -273,11 +273,11 @@ async def update_deliverable(
     if request.status is not None:
         deliverable.status = request.status
         if request.status == "valide" and deliverable.completed_at is None:
-            deliverable.completed_at = datetime.now(UTC)
+            deliverable.completed_at = datetime.utcnow()
     if request.due_date is not None:
         deliverable.due_date = datetime.fromisoformat(request.due_date.replace("Z", ""))
 
-    deliverable.updated_at = datetime.now(UTC)
+    deliverable.updated_at = datetime.utcnow()
     session.add(deliverable)
     await session.commit()
     await session.refresh(deliverable)
