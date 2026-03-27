@@ -4,6 +4,16 @@
 
 Therese Server est la version serveur de [Therese](https://github.com/ludovicsanchez38-creator/Synoptia-THERESE), concue pour etre deployee on-premise dans les mairies (300-500 agents) et PME. Zero dependance cloud, donnees souveraines.
 
+## Captures d'ecran
+
+| Connexion | Chat IA |
+|:-:|:-:|
+| ![Login](docs/images/login.png) | ![Chat](docs/images/chat.png) |
+
+| Administration | CRM / Contacts |
+|:-:|:-:|
+| ![Admin](docs/images/admin.png) | ![CRM](docs/images/crm.png) |
+
 ---
 
 ## Fonctionnalites

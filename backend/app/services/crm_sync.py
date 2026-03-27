@@ -287,7 +287,7 @@ class CRMSyncService:
                     existing.status = status
                     existing.due_date = due_date
                     existing.completed_at = completed_at
-                    existing.updated_at = datetime.now(UTC)
+                    existing.updated_at = datetime.utcnow()
                     self.session.add(existing)
                     stats.deliverables_updated += 1
                 else:
@@ -378,7 +378,7 @@ async def set_crm_spreadsheet_id(session: AsyncSession, spreadsheet_id: str):
 
     if pref:
         pref.value = spreadsheet_id
-        pref.updated_at = datetime.now(UTC)
+        pref.updated_at = datetime.utcnow()
     else:
         pref = Preference(
             key=CRM_SPREADSHEET_ID_KEY,
@@ -410,7 +410,7 @@ async def set_crm_tokens(
 
     if pref:
         pref.value = encrypted_token
-        pref.updated_at = datetime.now(UTC)
+        pref.updated_at = datetime.utcnow()
     else:
         pref = Preference(
             key=CRM_SHEETS_TOKEN_KEY,
@@ -430,7 +430,7 @@ async def set_crm_tokens(
 
         if pref:
             pref.value = encrypted_refresh
-            pref.updated_at = datetime.now(UTC)
+            pref.updated_at = datetime.utcnow()
         else:
             pref = Preference(
                 key=CRM_SHEETS_REFRESH_TOKEN_KEY,
@@ -452,7 +452,7 @@ async def set_crm_tokens(
             encrypted = encrypt_value(value)
             if pref:
                 pref.value = encrypted
-                pref.updated_at = datetime.now(UTC)
+                pref.updated_at = datetime.utcnow()
             else:
                 pref = Preference(key=key, value=encrypted, category="crm")
             session.add(pref)
@@ -647,7 +647,7 @@ async def ensure_valid_crm_token(session: AsyncSession) -> str | None:
         pref = result.scalar_one_or_none()
         if pref:
             pref.value = encrypt_value(new_access_token)
-            pref.updated_at = datetime.now(UTC)
+            pref.updated_at = datetime.utcnow()
             session.add(pref)
             await session.commit()
 
@@ -666,11 +666,11 @@ async def update_last_sync(session: AsyncSession):
     )
     pref = result.scalar_one_or_none()
 
-    now = datetime.now(UTC).isoformat()
+    now = datetime.utcnow().isoformat()
 
     if pref:
         pref.value = now
-        pref.updated_at = datetime.now(UTC)
+        pref.updated_at = datetime.utcnow()
     else:
         pref = Preference(
             key=CRM_LAST_SYNC_KEY,

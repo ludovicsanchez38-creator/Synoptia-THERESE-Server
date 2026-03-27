@@ -226,7 +226,7 @@ async def send_message_stream(
         content=data.message,
     )
     session.add(user_msg)
-    conversation.updated_at = datetime.now(UTC)
+    conversation.updated_at = datetime.utcnow()
     session.add(conversation)
     await session.commit()
 
