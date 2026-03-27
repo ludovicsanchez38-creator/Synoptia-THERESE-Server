@@ -43,7 +43,7 @@ Therese Server est la version serveur de [Therese](https://github.com/ludovicsan
 |--------|-------------|-----------|
 | **RAG** | Upload et indexation documents avec Qdrant (recherche semantique) | 5 |
 | **Memory** | Contacts et projets en memoire semantique | 5 |
-| **Multi-LLM** | Claude, GPT-4o, Gemini Flash, Mistral Large, Ollama (local) | - |
+| **Multi-LLM** | Claude, GPT (OpenAI), Gemini, Mistral, Ollama (local) | - |
 
 > **107 endpoints API** documentes via Swagger UI (`/docs`)
 
