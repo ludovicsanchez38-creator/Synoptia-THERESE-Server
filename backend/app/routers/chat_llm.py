@@ -146,7 +146,7 @@ async def _get_llm_response(
     try:
         client = _get_gemini()
         if client:
-            model_name = model if model and ("gemini" in model.lower()) else "gemini-3.1-flash-lite"
+            model_name = model if model and ("gemini" in model.lower()) else "gemini-3.1-flash-lite-preview"
             system_msg = (
                 "Tu es Therese, une assistante IA professionnelle pour les "
                 "collectivites et PME francaises. Reponds en francais, "
