@@ -73,7 +73,7 @@ class GeminiProvider(BaseProvider):
 
             # Add Google Search grounding tool (Gemini 2.5+ and 3.x support)
             # Only enable for models that support it
-            grounding_models = ["gemini-3", "gemini-2.5", "gemini-2.0"]
+            grounding_models = ["gemini-3.1", "gemini-3", "gemini-2.5", "gemini-2.0"]
             if enable_grounding and any(model.startswith(m) for m in grounding_models):
                 request_body["tools"] = [{"google_search": {}}]
 

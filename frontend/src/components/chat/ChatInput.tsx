@@ -7,10 +7,11 @@ import VoiceRecorder from "./VoiceRecorder";
 const MODELS = [
   { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "Anthropic" },
   { id: "claude-opus-4-6", name: "Claude Opus 4.6", provider: "Anthropic" },
-  { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI" },
+  { id: "gpt-5.2", name: "GPT-5.2", provider: "OpenAI" },
+  { id: "gemini-3.1-flash-lite", name: "Gemini 3.1 Flash", provider: "Google" },
   { id: "mistral-large-latest", name: "Mistral Large", provider: "Mistral" },
-  { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash", provider: "Google" },
-  { id: "mistral:7b", name: "Mistral 7B (local)", provider: "Ollama" },
+  { id: "grok-4", name: "Grok 4", provider: "xAI" },
+  { id: "mistral-nemo", name: "Mistral Nemo (local)", provider: "Ollama" },
 ];
 
 /** Préfixes @mention reconnus pour les missions agents. */
