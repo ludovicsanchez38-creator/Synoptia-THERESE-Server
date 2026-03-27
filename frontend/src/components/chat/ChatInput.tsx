@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, type FormEvent, type KeyboardEvent } from 
 import { useChatStore } from "../../stores/chatStore";
 import { useAuthStore } from "../../stores/authStore";
 import TemplateSelector from "./TemplateSelector";
+import VoiceRecorder from "./VoiceRecorder";
 
 const MODELS = [
   { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", provider: "Anthropic" },
@@ -96,6 +97,11 @@ export default function ChatInput() {
     setTimeout(() => textareaRef.current?.focus(), 50);
   };
 
+  const handleTranscription = (text: string) => {
+    setContent((prev) => (prev ? prev + ' ' + text : text));
+    setTimeout(() => textareaRef.current?.focus(), 50);
+  };
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -173,6 +179,10 @@ export default function ChatInput() {
           disabled={!currentConversationId}
           rows={1}
           className="flex-1 px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)] text-[var(--color-text)] text-sm resize-none disabled:opacity-40 placeholder:text-[var(--color-muted)]/50"
+        />
+        <VoiceRecorder
+          onTranscription={handleTranscription}
+          disabled={!currentConversationId}
         />
         <button
           type="submit"
