@@ -55,6 +55,12 @@ class AuditAction(str, Enum):
     # Board
     BOARD_DECISION = "board_decision"
 
+    # Missions autonomes
+    MISSION_CREATED = "mission_created"
+    MISSION_COMPLETED = "mission_completed"
+    MISSION_FAILED = "mission_failed"
+    MISSION_CANCELLED = "mission_cancelled"
+
     # Erreurs
     AUTH_FAILED = "auth_failed"
     ENCRYPTION_ERROR = "encryption_error"

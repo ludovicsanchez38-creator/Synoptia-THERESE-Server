@@ -44,6 +44,8 @@ services:
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-therese-docs}
     volumes:
       - therese_data:/var/lib/therese
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
