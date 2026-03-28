@@ -241,7 +241,7 @@ export default function SkillsPage() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" data-testid="skills-page">
       <NavBar />
 
       <main
@@ -349,7 +349,7 @@ export default function SkillsPage() {
                     {meta.label}
                   </h3>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="skills-list">
                   {catSkills.map((skill) => (
                     <SkillCard
                       key={skill.skill_id}
@@ -406,6 +406,7 @@ function SkillCard({
   return (
     <button
       onClick={onClick}
+      data-testid="skill-item"
       className={`text-left p-4 rounded-xl border transition-all ${
         isSelected
           ? "border-[var(--color-cyan)] bg-slate-800/50 ring-1 ring-[var(--color-cyan)]/30"
@@ -643,6 +644,7 @@ function ExecutionPanel({
             onClick={onExecute}
             disabled={executing || schemaLoading}
             className="w-full bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 text-white"
+            data-testid="skill-execute-btn"
           >
             {executing ? (
               <span className="flex items-center justify-center gap-2">

@@ -32,6 +32,7 @@ export default function NavBar() {
             <Link
               key={link.to}
               to={link.to}
+              data-testid={`nav-link-${link.to.replace("/", "")}`}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 location.pathname === link.to ||
                 location.pathname.startsWith(link.to + "/")
@@ -45,6 +46,7 @@ export default function NavBar() {
           {user?.role === "admin" && (
             <Link
               to="/admin"
+              data-testid="nav-link-admin"
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                 location.pathname.startsWith("/admin")
                   ? "bg-slate-800 text-[var(--color-cyan)]"

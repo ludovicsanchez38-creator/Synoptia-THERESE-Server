@@ -57,6 +57,7 @@ export default function CharterModal() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="charter-title"
+        data-testid="charter-modal"
         className="w-full max-w-2xl mx-4 rounded-2xl border border-white/10 shadow-2xl"
         style={{ backgroundColor: "var(--color-bg)" }}
       >
@@ -130,6 +131,7 @@ export default function CharterModal() {
           <button
             onClick={handleAccept}
             disabled={!checked || isSubmitting}
+            data-testid="charter-accept-btn"
             className="w-full py-2.5 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               backgroundColor: checked ? "var(--color-primary)" : "transparent",

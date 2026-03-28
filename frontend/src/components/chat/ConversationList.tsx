@@ -40,10 +40,11 @@ export default function ConversationList() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" data-testid="conversation-list">
       <div className="p-3 space-y-2">
         <button
           onClick={() => newConversation()}
+          data-testid="new-conversation-btn"
           className="w-full py-2 text-sm bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/30 rounded-lg text-[var(--color-primary)] hover:bg-[var(--color-primary)]/20 transition-colors"
         >
           + Nouvelle conversation
@@ -80,7 +81,7 @@ export default function ConversationList() {
         ) : (
           <ul className="space-y-1">
             {filtered.map((conv) => (
-              <li key={conv.id}>
+              <li key={conv.id} data-testid="conversation-item">
                 <button
                   onClick={() => selectConversation(conv.id)}
                   className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors group flex items-center justify-between gap-2 ${

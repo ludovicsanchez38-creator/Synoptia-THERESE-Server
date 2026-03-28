@@ -202,6 +202,7 @@ export default function ChatInput() {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
+          data-testid="chat-message-input"
           placeholder={
             currentConversationId
               ? "Écrivez votre message... (@conformité pour lancer un agent)"
@@ -221,6 +222,7 @@ export default function ChatInput() {
           className="px-5 py-2.5 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/80 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl font-medium transition-colors text-sm shrink-0"
           title="Envoyer"
           aria-label="Envoyer le message"
+          data-testid="chat-send-btn"
         >
           <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 2L11 13" />

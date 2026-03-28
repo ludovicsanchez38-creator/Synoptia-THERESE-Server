@@ -162,7 +162,7 @@ export default function CRMPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" data-testid="crm-page">
       <NavBar />
 
       <main id="main-content" className="flex-1 p-4 md:p-6 max-w-6xl mx-auto w-full">
@@ -227,6 +227,7 @@ export default function CRMPage() {
               <button
                 onClick={() => setShowContactForm(!showContactForm)}
                 className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--color-primary)] text-white hover:opacity-90 transition-opacity"
+                data-testid="crm-create-contact-btn"
               >
                 {showContactForm ? "Annuler" : "Nouveau contact"}
               </button>
@@ -339,7 +340,7 @@ export default function CRMPage() {
                 {debouncedContactQuery ? "Aucun résultat" : "Aucun contact pour le moment"}
               </div>
             ) : (
-              <div className="bg-slate-800/20 border border-slate-700 rounded-xl overflow-hidden">
+              <div className="bg-slate-800/20 border border-slate-700 rounded-xl overflow-hidden" data-testid="crm-contact-list">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -356,6 +357,7 @@ export default function CRMPage() {
                       {filteredContacts.map((contact) => (
                         <tr
                           key={contact.id}
+                          data-testid="crm-contact-item"
                           className="border-b border-slate-800 hover:bg-slate-800/20"
                         >
                           <td className="px-4 py-3 text-[var(--color-text)]">

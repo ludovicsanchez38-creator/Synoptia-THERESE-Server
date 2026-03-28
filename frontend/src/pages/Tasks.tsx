@@ -121,7 +121,7 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" data-testid="tasks-page">
       <NavBar />
 
       <main id="main-content" className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
@@ -130,7 +130,7 @@ export default function TasksPage() {
           <h2 className="text-xl font-bold text-[var(--color-text)]">
             T&acirc;ches
           </h2>
-          <Button onClick={() => setShowForm(!showForm)}>
+          <Button onClick={() => setShowForm(!showForm)} data-testid="tasks-create-btn">
             {showForm ? "Annuler" : "Nouvelle t\u00e2che"}
           </Button>
         </div>
@@ -252,10 +252,11 @@ export default function TasksPage() {
 
         {/* Liste des tâches */}
         {!loading && filtered.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-2" data-testid="tasks-list">
             {filtered.map((task) => (
               <div
                 key={task.id}
+                data-testid="task-item"
                 className={`flex items-start gap-3 p-4 bg-slate-800/20 border border-slate-700 rounded-xl hover:bg-slate-800/30 transition-colors ${
                   task.status === "done" ? "opacity-60" : ""
                 }`}

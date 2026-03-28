@@ -16,6 +16,36 @@ import {
 } from "../services/api/boardService";
 import { useToastStore } from "../stores/toastStore";
 
+// SVG icons pour les conseillers du Board
+const ADVISOR_SVGS: Record<string, React.ReactNode> = {
+  analyst: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22D3EE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  ),
+  strategist: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
+    </svg>
+  ),
+  devil: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+    </svg>
+  ),
+  pragmatic: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" />
+    </svg>
+  ),
+  visionary: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E11D8D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z" />
+      <path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z" />
+    </svg>
+  ),
+};
+
 type Tab = "deliberation" | "history";
 
 interface AdvisorState {
@@ -266,7 +296,7 @@ export default function BoardPage() {
   }, [synthesis]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" data-testid="board-page">
       <NavBar />
 
       <main id="main-content" className="flex-1 p-4 md:p-6 max-w-6xl mx-auto w-full">
@@ -313,7 +343,7 @@ export default function BoardPage() {
         {tab === "deliberation" && (
           <>
             {/* Formulaire question */}
-            <div className="mb-6 p-4 bg-slate-800/30 border border-slate-700 rounded-xl space-y-3">
+            <div className="mb-6 p-4 bg-slate-800/30 border border-slate-700 rounded-xl space-y-3" data-testid="board-panel">
               <div>
                 <label className="block text-sm text-[var(--color-muted)] mb-1">
                   Question strategique *
@@ -363,6 +393,7 @@ export default function BoardPage() {
                     onClick={handleDeliberate}
                     disabled={question.trim().length < 10}
                     className="bg-[var(--color-cyan)] text-[var(--color-bg)] hover:bg-[var(--color-cyan)]/80"
+                    data-testid="board-submit-btn"
                   >
                     Deliberer
                   </Button>
@@ -381,7 +412,7 @@ export default function BoardPage() {
 
             {/* Synthese */}
             {(synthesisLoading || synthesis) && (
-              <div ref={synthesisRef}>
+              <div ref={synthesisRef} data-testid="board-result">
                 <SynthesisPanel
                   synthesis={synthesis}
                   loading={synthesisLoading}
